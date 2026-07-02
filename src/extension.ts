@@ -39,8 +39,13 @@ export function activate(context: vscode.ExtensionContext) {
             }
         );
 
-        // HTML 콘텐츠 주입 (초기 검색어 전달)
-        activePanel.webview.html = getWebviewContent(selectedText);
+        // HTML 콘텐츠 주입 (초기 검색어 및 에디터 언어 정보 전달)
+        const locale = vscode.env.language || 'en';
+        const savedStyle = context.globalState.get<string>('searchStyleMode') || 'intellij';
+        activePanel.webview.html = getWebviewContent(selectedText, locale, savedStyle);
+
+        // 초기 검색 범위 데이터(모듈, 최근 디렉터리 등) 수집 및 전달
+        sendInitialScopeData(activePanel);
 
         // 탭이 닫힐 때 이벤트 처리
         activePanel.onDidDispose(() => {
@@ -52,8 +57,19 @@ export function activate(context: vscode.ExtensionContext) {
             if (!activePanel) { return; }
 
             switch (message.command) {
+                case 'saveStyleMode':
+                    await context.globalState.update('searchStyleMode', message.style);
+                    break;
                 case 'search':
-                    await handleSearch(activePanel, message.query, message.filter);
+                    await handleSearch(
+                        activePanel, 
+                        message.query, 
+                        message.filter, 
+                        message.scope,
+                        message.moduleValue,
+                        message.directoryValue,
+                        message.scopeValue
+                    );
                     break;
                 case 'requestPreview':
                     await handlePreview(activePanel, message.path, message.line, message.query);
@@ -66,6 +82,20 @@ export function activate(context: vscode.ExtensionContext) {
                     break;
                 case 'close':
                     activePanel.dispose();
+                    break;
+                case 'browseDirectory':
+                    const folders = await vscode.window.showOpenDialog({
+                        canSelectFiles: false,
+                        canSelectFolders: true,
+                        canSelectMany: false,
+                        openLabel: locale.startsWith('ko') ? '폴더 선택' : 'Select Folder'
+                    });
+                    if (folders && folders[0] && activePanel) {
+                        activePanel.webview.postMessage({
+                            command: 'directorySelected',
+                            path: folders[0].fsPath
+                        });
+                    }
                     break;
             }
         }, null, context.subscriptions);
@@ -93,7 +123,15 @@ function decodeFileContent(fileData: Uint8Array): string {
 }
 
 // 프로젝트 전체 텍스트 검색 처리
-async function handleSearch(panel: vscode.WebviewPanel, queryText: string, filterText: string) {
+async function handleSearch(
+    panel: vscode.WebviewPanel, 
+    queryText: string, 
+    filterText: string, 
+    scopeText: string = 'project',
+    moduleValue: string = '',
+    directoryValue: string = '',
+    scopeValue: string = 'all'
+) {
     if (!queryText || queryText.trim().length === 0) {
         return;
     }
@@ -101,12 +139,28 @@ async function handleSearch(panel: vscode.WebviewPanel, queryText: string, filte
     const cleanQuery = queryText.toLowerCase().trim();
     let results: any[] = [];
     
-    // 파일 필터 조건 생성
+    // 파일 필터 조건 생성 (라이크 및 와일드카드 부분 일치 검색 가능하도록 변환)
     let filePattern = '**/*';
     if (filterText && filterText.trim()) {
-        filePattern = filterText.trim();
-        if (filePattern.startsWith('*.')) {
-            filePattern = '**/' + filePattern;
+        let pattern = filterText.trim();
+        if (pattern.includes('**/')) {
+            filePattern = pattern;
+        } else {
+            if (!pattern.includes('*')) {
+                if (pattern.endsWith('/')) {
+                    pattern = `**/${pattern}**/*`;
+                } else {
+                    pattern = `*${pattern}*`;
+                }
+            }
+            if (!pattern.startsWith('**/')) {
+                if (pattern.startsWith('/')) {
+                    pattern = `**${pattern}`;
+                } else {
+                    pattern = `**/${pattern}`;
+                }
+            }
+            filePattern = pattern;
         }
     }
 
@@ -114,8 +168,109 @@ async function handleSearch(panel: vscode.WebviewPanel, queryText: string, filte
     const excludePattern = '{**/node_modules/**,**/dist/**,**/build/**,**/.git/**,**/target/**,**/bin/**,**/out/**}';
 
     try {
-        // VS Code 내장 파일 검색 API 실행 (최대 1500개 파일 스캔)
-        const files = await vscode.workspace.findFiles(filePattern, excludePattern, 1500);
+        let files: vscode.Uri[] = [];
+
+        // 검색 범위 분기 처리
+        if (scopeText === 'module') {
+            let targetUri: vscode.Uri | undefined;
+            if (moduleValue) {
+                targetUri = vscode.Uri.file(moduleValue);
+            } else {
+                const activeEditor = vscode.window.activeTextEditor;
+                const folder = activeEditor ? vscode.workspace.getWorkspaceFolder(activeEditor.document.uri) : undefined;
+                if (folder) {
+                    targetUri = folder.uri;
+                }
+            }
+
+            if (targetUri) {
+                const searchPattern = new vscode.RelativePattern(targetUri, filePattern);
+                files = await vscode.workspace.findFiles(searchPattern, excludePattern, 1500);
+            } else {
+                files = await vscode.workspace.findFiles(filePattern, excludePattern, 1500);
+            }
+        } else if (scopeText === 'directory') {
+            let targetUri: vscode.Uri | undefined;
+            if (directoryValue) {
+                targetUri = vscode.Uri.file(directoryValue);
+            } else {
+                const activeEditor = vscode.window.activeTextEditor;
+                if (activeEditor) {
+                    targetUri = vscode.Uri.joinPath(activeEditor.document.uri, '..');
+                }
+            }
+
+            if (targetUri) {
+                const searchPattern = new vscode.RelativePattern(targetUri, filePattern);
+                files = await vscode.workspace.findFiles(searchPattern, excludePattern, 1500);
+            } else {
+                files = await vscode.workspace.findFiles(filePattern, excludePattern, 1500);
+            }
+        } else if (scopeText === 'scope') {
+            if (scopeValue === 'open_files') {
+                // 열려 있는 탭들만 검색
+                const openUris: vscode.Uri[] = [];
+                vscode.window.tabGroups.all.forEach(group => {
+                    group.tabs.forEach(tab => {
+                        if (tab.input instanceof vscode.TabInputText) {
+                            openUris.push(tab.input.uri);
+                        }
+                    });
+                });
+                
+                const filterLower = filterText ? filterText.toLowerCase().trim() : '';
+                files = openUris.filter(uri => {
+                    const relPath = vscode.workspace.asRelativePath(uri);
+                    const relPathLower = relPath.toLowerCase();
+                    
+                    // 제외 경로 체크
+                    if (relPathLower.includes('node_modules/') || 
+                        relPathLower.includes('dist/') || 
+                        relPathLower.includes('build/') || 
+                        relPathLower.includes('.git/') || 
+                        relPathLower.includes('target/') || 
+                        relPathLower.includes('bin/') || 
+                        relPathLower.includes('out/')) {
+                        return false;
+                    }
+                    
+                    // 파일 패턴 매치 검사
+                    if (filterLower) {
+                        const cleanPattern = filterLower.replace(/\*/g, '');
+                        if (!relPathLower.includes(cleanPattern)) {
+                            return false;
+                        }
+                    }
+                    return true;
+                });
+            } else {
+                // 프로젝트 전체 파일을 가져온 뒤 필터링 처리
+                const allFiles = await vscode.workspace.findFiles(filePattern, excludePattern, 1500);
+                if (scopeValue === 'production_files') {
+                    files = allFiles.filter(uri => {
+                        const pathLower = uri.fsPath.toLowerCase();
+                        return !pathLower.includes('/test/') && 
+                               !pathLower.includes('\\test\\') && 
+                               !pathLower.includes('test.') && 
+                               !pathLower.includes('spec.');
+                    });
+                } else if (scopeValue === 'test_files') {
+                    files = allFiles.filter(uri => {
+                        const pathLower = uri.fsPath.toLowerCase();
+                        return pathLower.includes('/test/') || 
+                               pathLower.includes('\\test\\') || 
+                               pathLower.includes('test.') || 
+                               pathLower.includes('spec.');
+                    });
+                } else {
+                    // 'all' 또는 'project_files'
+                    files = allFiles;
+                }
+            }
+        } else {
+            // 기본값 'project' (전체 검색)
+            files = await vscode.workspace.findFiles(filePattern, excludePattern, 1500);
+        }
         
         // 각 파일에서 텍스트 검색 수행
         const promises = files.map(async (uri) => {
@@ -170,7 +325,9 @@ async function handleSearch(panel: vscode.WebviewPanel, queryText: string, filte
             data: results
         });
     } catch (error: any) {
-        vscode.window.showErrorMessage('검색 중 오류 발생: ' + error.message);
+        const isKorean = (vscode.env.language || 'en').startsWith('ko');
+        const errorPrefix = isKorean ? '검색 중 오류 발생: ' : 'Error during search: ';
+        vscode.window.showErrorMessage(errorPrefix + error.message);
     }
 }
 
@@ -186,9 +343,9 @@ async function handlePreview(panel: vscode.WebviewPanel, filePath: string, targe
         
         const targetIndex = targetLine - 1; // 0-indexed
         
-        // 전후 7줄씩 미리보기 제공 (총 15줄)
-        const start = Math.max(0, targetIndex - 7);
-        const end = Math.min(lines.length - 1, targetIndex + 7);
+        // 전후 25줄씩 미리보기 제공
+        const start = Math.max(0, targetIndex - 25);
+        const end = Math.min(lines.length - 1, targetIndex + 25);
 
         const previewLines = [];
         for (let i = start; i <= end; i++) {
@@ -206,10 +363,12 @@ async function handlePreview(panel: vscode.WebviewPanel, filePath: string, targe
             query: queryText
         });
     } catch (error) {
+        const isKorean = (vscode.env.language || 'en').startsWith('ko');
+        const readError = isKorean ? '파일 내용을 읽을 수 없습니다.' : 'Cannot read file content.';
         panel.webview.postMessage({
             command: 'previewContent',
             path: filePath,
-            content: [{ line: targetLine, text: '파일 내용을 읽을 수 없습니다.' }],
+            content: [{ line: targetLine, text: readError }],
             line: targetLine,
             query: ''
         });
@@ -234,6 +393,70 @@ async function handleOpenFile(filePath: string, targetLine: number) {
     } catch (error: any) {
         vscode.window.showErrorMessage('파일을 여는 중 오류 발생: ' + error.message);
     }
+}
+
+// 초기 스코프 데이터 전집 및 웹뷰 전송
+async function sendInitialScopeData(panel: vscode.WebviewPanel) {
+    const modules: { label: string; value: string }[] = [];
+    const directories: string[] = [];
+
+    // 모듈 (1단계 서브 디렉터리) 수집
+    const workspaceFolders = vscode.workspace.workspaceFolders;
+    if (workspaceFolders && workspaceFolders.length > 0) {
+        for (const folder of workspaceFolders) {
+            try {
+                // 루트 폴더 자체도 첫 항목으로 추가
+                modules.push({
+                    label: `[Project] ${folder.name}`,
+                    value: folder.uri.fsPath
+                });
+
+                const children = await vscode.workspace.fs.readDirectory(folder.uri);
+                for (const [name, type] of children) {
+                    if (type === vscode.FileType.Directory) {
+                        // 빌드 및 제외 폴더 제외
+                        const excludes = ['node_modules', 'dist', 'build', '.git', 'target', 'bin', 'out', '.gradle', '.idea', '.vscode'];
+                        if (!excludes.includes(name.toLowerCase())) {
+                            const subUri = vscode.Uri.joinPath(folder.uri, name);
+                            modules.push({
+                                label: `${folder.name}/${name}`,
+                                value: subUri.fsPath
+                            });
+                        }
+                    }
+                }
+            } catch (e) {
+                // 디렉터리 읽기 에러
+            }
+        }
+    }
+
+    // 현재 활성화된 에디터가 있다면 해당 파일의 디렉터리를 디렉터리 기본값에 세팅
+    const activeEditor = vscode.window.activeTextEditor;
+    if (activeEditor) {
+        const parentDir = vscode.Uri.joinPath(activeEditor.document.uri, '..').fsPath;
+        directories.push(parentDir);
+    }
+
+    // 워크스페이스 폴더 루트 자체도 디렉터리 이력에 추가
+    if (workspaceFolders) {
+        workspaceFolders.forEach(folder => {
+            if (!directories.includes(folder.uri.fsPath)) {
+                directories.push(folder.uri.fsPath);
+            }
+        });
+    }
+
+    // 웹뷰 로딩이 완료된 시점에 전달되도록 500ms 지연 발송
+    setTimeout(() => {
+        if (panel && panel.webview) {
+            panel.webview.postMessage({
+                command: 'initScopeData',
+                modules: modules,
+                directories: directories
+            });
+        }
+    }, 500);
 }
 
 export function deactivate() {}

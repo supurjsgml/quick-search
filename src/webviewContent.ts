@@ -1,4 +1,4 @@
-export function getWebviewContent(initialQuery: string = ''): string {
+export function getWebviewContent(initialQuery: string = '', locale: string = 'en', defaultStyle: string = 'intellij'): string {
     // HTML 이스케이프 (인풋 태그 내 주입 시 깨짐 방지)
     const escapedQuery = initialQuery
         .replace(/&/g, "&amp;")
@@ -7,11 +7,68 @@ export function getWebviewContent(initialQuery: string = ''): string {
         .replace(/"/g, "&quot;")
         .replace(/'/g, "&#039;");
 
+    // 언어별 번역 사전 정의
+    const translations: Record<string, any> = {
+        ko: {
+            title: "Quick Search",
+            searchPatternLabel: "검색 패턴 (대소문자 구분 없음)",
+            searchPlaceholder: "검색할 패턴을 입력하세요...",
+            fileNameFilterLabel: "파일명 필터 (예: *.java, src/)",
+            fileNameFilterPlaceholder: "예: *.java",
+            initialMessage: "검색어를 입력해 주세요. (ESC를 누르면 창이 닫힙니다)",
+            noResults: "검색 결과가 없습니다.",
+            noFileSelected: "선택된 파일 없음",
+            previewPlaceholder: "// 항목을 선택하면 코드가 여기에 미리보기로 표시됩니다",
+            statusBarHelp: "ESC: 닫기 | ↑/↓: 이동 | Enter: 파일 열기",
+            searching: "검색 중...",
+            ready: "준비 완료",
+            foundMatches: "개의 검색 결과 발견",
+            noMatchesFound: "일치하는 결과가 없습니다",
+            scopeInProject: "프로젝트 내",
+            scopeModule: "모듈",
+            scopeDirectory: "디렉터리",
+            scopeScope: "범위",
+            scopeOptAll: "모든 위치",
+            scopeOptProjectFiles: "프로젝트 파일",
+            scopeOptProductionFiles: "프로젝트 프로덕션 파일",
+            scopeOptTestFiles: "프로젝트 테스트 파일",
+            scopeOptOpenFiles: "최근에 본 파일 (열린 파일)"
+        },
+        en: {
+            title: "Quick Search",
+            searchPatternLabel: "Search Pattern (Case Insensitive)",
+            searchPlaceholder: "Type pattern to search...",
+            fileNameFilterLabel: "File Name Filter (e.g. *.java, src/)",
+            fileNameFilterPlaceholder: "e.g. *.java",
+            initialMessage: "Please enter a search term. (Press ESC to close)",
+            noResults: "No matches found.",
+            noFileSelected: "No File Selected",
+            previewPlaceholder: "// Select an item to preview code",
+            statusBarHelp: "ESC: Close | Arrow Up/Down: Navigate | Enter: Open File",
+            searching: "Searching...",
+            ready: "Ready",
+            foundMatches: " match(es) found",
+            noMatchesFound: "No matches found",
+            scopeInProject: "In Project",
+            scopeModule: "Module",
+            scopeDirectory: "Directory",
+            scopeScope: "Scope",
+            scopeOptAll: "All Places",
+            scopeOptProjectFiles: "Project Files",
+            scopeOptProductionFiles: "Project Production Files",
+            scopeOptTestFiles: "Project Test Files",
+            scopeOptOpenFiles: "Recently Viewed Files (Open Files)"
+        }
+    };
+
+    const lang = locale.startsWith('ko') ? 'ko' : 'en';
+    const t = translations[lang];
+
     return `<!DOCTYPE html>
-<html lang="ko">
+<html lang="${lang}">
 <head>
     <meta charset="UTF-8">
-    <title>Quick Search</title>
+    <title>${t.title}</title>
     <style>
         body {
             background-color: var(--vscode-editor-background, #1e1e1e);
@@ -78,13 +135,17 @@ export function getWebviewContent(initialQuery: string = ''): string {
             width: 100%;
             border-collapse: collapse;
             text-align: left;
+            table-layout: fixed;
         }
         th, td {
             padding: 6px 10px;
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
-            max-width: 300px;
+            border-right: 1px solid var(--vscode-panel-border, #80808020);
+        }
+        th:last-child, td:last-child {
+            border-right: none;
         }
         th {
             background-color: var(--vscode-titleBar-activeBackground, #2d2d2d);
@@ -106,12 +167,44 @@ export function getWebviewContent(initialQuery: string = ''): string {
             background-color: var(--vscode-list-activeSelectionBackground, #04395e) !important;
             color: var(--vscode-list-activeSelectionForeground, #ffffff) !important;
         }
-        .col-line { width: 60px; text-align: right; color: var(--vscode-editorLineNumber-foreground, #858585); }
-        .col-text { width: auto; font-family: var(--vscode-editor-font-family, Consolas, monospace); }
-        .col-path { width: 350px; color: var(--vscode-descriptionForeground, #8c8c8c); font-size: 11px; }
+        .col-line { 
+            width: 70px; 
+            text-align: right; 
+            color: var(--vscode-editorLineNumber-foreground, #858585); 
+            position: relative; 
+            padding-right: 15px; 
+        }
+        .col-text { 
+            width: auto; 
+            font-family: var(--vscode-editor-font-family, Consolas, monospace); 
+            position: relative; 
+            padding-left: 15px; 
+        }
+        .col-path { 
+            width: 180px; 
+            color: var(--vscode-descriptionForeground, #8c8c8c); 
+            font-size: 11px; 
+            position: relative; 
+        }
 
         tr.selected .col-line, tr.selected .col-path {
             color: inherit;
+        }
+
+        /* 가로 열 크기 조절용 핸들 */
+        .col-resizer {
+            position: absolute;
+            top: 0;
+            right: -4px;
+            width: 8px;
+            cursor: col-resize;
+            user-select: none;
+            height: 100%;
+            z-index: 12;
+            background-color: transparent;
+        }
+        .col-resizer:hover, .col-resizer.resizing {
+            background-color: var(--vscode-focusBorder, #007acc);
         }
 
         /* 세로 크기 조절바 (Resizer Splitter) */
@@ -179,6 +272,192 @@ export function getWebviewContent(initialQuery: string = ''): string {
             display: flex;
             justify-content: space-between;
         }
+
+        /* IntelliJ Style 오버라이드 */
+        .intellij-style {
+            background-color: #2b2b2b;
+            color: #a9b7c6;
+        }
+        .intellij-style input[type="text"] {
+            background-color: #3c3f41;
+            color: #bbbbbb;
+            border: 1px solid #646464;
+            border-radius: 3px;
+        }
+        .intellij-style input[type="text"]:focus {
+            border-color: #3b72ab;
+        }
+        .intellij-style .grid-area {
+            background-color: #2b2b2b;
+            border: 1px solid #323232;
+        }
+        /* IntelliJ 모드에서는 테이블 헤더를 숨김 */
+        .intellij-style thead {
+            display: none;
+        }
+        /* IntelliJ 모드에서는 테이블 행을 flexbox 리스트로 처리 */
+        .intellij-style tr {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid #323232;
+            cursor: pointer;
+            padding: 6px 15px;
+        }
+        .intellij-style tr:hover {
+            background-color: #2f3032;
+        }
+        .intellij-style tr.selected {
+            background-color: #244161 !important;
+            color: #bbbbbb !important;
+        }
+        .intellij-row-left {
+            flex: 1;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            font-family: var(--vscode-editor-font-family, Consolas, monospace);
+            padding-right: 15px;
+            text-align: left;
+        }
+        .intellij-row-right {
+            flex-shrink: 0;
+            color: #787878;
+            font-size: 11px;
+            text-align: right;
+        }
+        .intellij-style tr.selected .intellij-row-right {
+            color: #a9b7c6;
+        }
+        
+        .intellij-style .preview-area {
+            background-color: #2b2b2b;
+            border: 1px solid #323232;
+        }
+        .intellij-style .preview-header {
+            background-color: #3c3f41;
+            color: #a9b7c6;
+            border-bottom: 1px solid #323232;
+        }
+        .intellij-style .preview-body {
+            background-color: #2b2b2b;
+            color: #a9b7c6;
+        }
+        .intellij-style .highlight-line {
+            background-color: #214283;
+            border-left: 3px solid #3b72ab;
+        }
+        
+        /* 범위 탭 및 스타일 스위처 디자인 */
+        .scope-tabs {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+            border-bottom: 1px solid var(--vscode-panel-border, #80808030);
+            padding-bottom: 6px;
+            flex-shrink: 0;
+        }
+        .tabs-left {
+            display: flex;
+            gap: 4px;
+        }
+        .tabs-right {
+            display: flex;
+            gap: 4px;
+            margin-left: auto;
+        }
+        /* 스타일 모드에 따른 범위 탭 노출 여부 제어 */
+        .eclipse-style .tabs-left {
+            display: none;
+        }
+        .intellij-style .tabs-left {
+            display: flex;
+        }
+        /* 상세 검색 옵션 UI 스타일 */
+        .scope-select {
+            background-color: var(--vscode-input-background, #3c3c3c);
+            color: var(--vscode-input-foreground, #cccccc);
+            border: 1px solid var(--vscode-input-border, #3c3c3c);
+            padding: 4px 6px;
+            font-size: 11px;
+            border-radius: 2px;
+            font-family: inherit;
+            outline: none;
+            max-width: 320px;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            overflow: hidden;
+        }
+        .scope-select:focus {
+            border-color: var(--vscode-focusBorder, #007acc);
+        }
+        .browse-btn {
+            background-color: var(--vscode-button-background, #007acc);
+            color: var(--vscode-button-foreground, #ffffff);
+            border: none;
+            padding: 4px 8px;
+            border-radius: 2px;
+            cursor: pointer;
+            font-size: 11px;
+            font-weight: bold;
+        }
+        .browse-btn:hover {
+            background-color: var(--vscode-button-hoverBackground, #118ad4);
+        }
+        .intellij-style .scope-select {
+            background-color: #3b3f41;
+            color: #bbbbbb;
+            border: 1px solid #646464;
+            border-radius: 3px;
+        }
+        .intellij-style .scope-select:focus {
+            border-color: #3b72ab;
+        }
+        .intellij-style .browse-btn {
+            background-color: #3b3f41;
+            color: #bbbbbb;
+            border: 1px solid #646464;
+            border-radius: 3px;
+        }
+        .intellij-style .browse-btn:hover {
+            background-color: #4c5052;
+        }
+        .eclipse-style #scope-details-area {
+            display: none !important;
+        }
+        .tab-btn {
+            background: transparent;
+            border: 1px solid transparent;
+            color: var(--vscode-descriptionForeground, #8c8c8c);
+            padding: 4px 10px;
+            cursor: pointer;
+            border-radius: 3px;
+            font-size: 11px;
+        }
+        .tab-btn:hover {
+            background-color: var(--vscode-list-hoverBackground, #2a2d2e);
+        }
+        .tab-btn.active {
+            background-color: var(--vscode-button-background, #007acc);
+            color: var(--vscode-button-foreground, #ffffff);
+            font-weight: bold;
+        }
+        .style-toggle-btn {
+            background: transparent;
+            border: 1px solid var(--vscode-button-border, #80808050);
+            color: var(--vscode-descriptionForeground, #8c8c8c);
+            padding: 4px 8px;
+            cursor: pointer;
+            border-radius: 3px;
+            font-size: 11px;
+            transition: all 0.2s;
+        }
+        .style-toggle-btn.active {
+            background-color: var(--vscode-button-background, #007acc);
+            color: var(--vscode-button-foreground, #ffffff);
+            border-color: var(--vscode-button-background, #007acc);
+        }
     </style>
 </head>
 <body>
@@ -186,12 +465,48 @@ export function getWebviewContent(initialQuery: string = ''): string {
     <!-- 검색 입력 영역 -->
     <div class="search-area">
         <div class="search-box-wrapper">
-            <span class="label">Search Pattern (Case Insensitive)</span>
-            <input type="text" id="search-input" placeholder="Type pattern to search..." autofocus autocomplete="off" value="${escapedQuery}">
+            <span class="label">${t.searchPatternLabel}</span>
+            <input type="text" id="search-input" placeholder="${t.searchPlaceholder}" autofocus autocomplete="off" value="${escapedQuery}">
         </div>
         <div class="filter-box-wrapper">
-            <span class="label">File Name Filter (e.g. *.java, src/)</span>
-            <input type="text" id="filter-input" placeholder="e.g. *.java" autocomplete="off">
+            <span class="label">${t.fileNameFilterLabel}</span>
+            <input type="text" id="filter-input" placeholder="${t.fileNameFilterPlaceholder}" autocomplete="off">
+        </div>
+    </div>
+
+    <!-- 범위 탭 및 테마 토글 바 -->
+    <div class="scope-tabs">
+        <div class="tabs-left" id="search-scope-tabs">
+            <button class="tab-btn active" data-scope="project">${t.scopeInProject}</button>
+            <button class="tab-btn" data-scope="module">${t.scopeModule}</button>
+            <button class="tab-btn" data-scope="directory">${t.scopeDirectory}</button>
+            <button class="tab-btn" data-scope="scope">${t.scopeScope}</button>
+        </div>
+        
+        <!-- 동적 탭 보조 상세 컨트롤 영역 -->
+        <div id="scope-details-area" style="display: flex; align-items: center; gap: 6px; margin-left: 12px; flex: 1;">
+            <!-- 모듈 선택용 드롭다운 (Module 모드 시 노출) -->
+            <select id="module-select" class="scope-select" style="display: none;"></select>
+
+            <!-- 디렉터리 선택용 드롭다운 및 찾아보기 버튼 (Directory 모드 시 노출) -->
+            <div id="directory-input-wrapper" style="display: none; align-items: center; gap: 4px; flex: 1; max-width: 400px;">
+                <select id="directory-select" class="scope-select" style="flex: 1; max-width: 320px;"></select>
+                <button id="directory-browse-btn" class="browse-btn">...</button>
+            </div>
+
+            <!-- 범위 선택용 드롭다운 (Scope 모드 시 노출) -->
+            <select id="scope-select" class="scope-select" style="display: none;">
+                <option value="all" selected>${t.scopeOptAll}</option>
+                <option value="project_files">${t.scopeOptProjectFiles}</option>
+                <option value="production_files">${t.scopeOptProductionFiles}</option>
+                <option value="test_files">${t.scopeOptTestFiles}</option>
+                <option value="open_files">${t.scopeOptOpenFiles}</option>
+            </select>
+        </div>
+
+        <div class="tabs-right">
+            <button class="style-toggle-btn" id="style-intellij">IntelliJ</button>
+            <button class="style-toggle-btn" id="style-eclipse">Eclipse</button>
         </div>
     </div>
 
@@ -200,15 +515,15 @@ export function getWebviewContent(initialQuery: string = ''): string {
         <table>
             <thead>
                 <tr>
-                    <th class="col-line">Line</th>
-                    <th class="col-text">Text</th>
-                    <th class="col-path">Path</th>
+                    <th class="col-line">Line<div class="col-resizer"></div></th>
+                    <th class="col-text">Text<div class="col-resizer"></div></th>
+                    <th class="col-path">Path<div class="col-resizer"></div></th>
                 </tr>
             </thead>
             <tbody id="results-body">
                 <tr>
                     <td colspan="3" style="text-align: center; color: var(--vscode-descriptionForeground); padding: 40px;">
-                        검색어를 입력해 주세요. (ESC를 누르면 창이 닫힙니다)
+                        ${t.initialMessage}
                     </td>
                 </tr>
             </tbody>
@@ -220,17 +535,19 @@ export function getWebviewContent(initialQuery: string = ''): string {
 
     <!-- 소스 미리보기 -->
     <div class="preview-area" id="preview-area">
-        <div class="preview-header" id="preview-file-path">No File Selected</div>
-        <pre class="preview-body"><code id="preview-content">// Select an item to preview code</code></pre>
+        <div class="preview-header" id="preview-file-path">${t.noFileSelected}</div>
+        <pre class="preview-body"><code id="preview-content">${t.previewPlaceholder}</code></pre>
     </div>
 
     <!-- 상태 바 -->
     <div class="status-bar">
-        <span id="status-text">Ready</span>
-        <span>ESC: Close | Arrow Up/Down: Navigate | Enter: Open File</span>
+        <span id="status-text">${t.ready}</span>
+        <span>${t.statusBarHelp}</span>
     </div>
 
     <script>
+        const lang = "${lang}";
+        const t = ${JSON.stringify(t)};
         const vscode = acquireVsCodeApi();
         const searchInput = document.getElementById('search-input');
         const filterInput = document.getElementById('filter-input');
@@ -244,6 +561,164 @@ export function getWebviewContent(initialQuery: string = ''): string {
         let searchDebounceTimer;
         let selectedIndex = -1;
         let resultsData = [];
+        let userPreviewHeight = 250;
+        let isCompactMode = false;
+        let currentStyle = 'intellij';
+        let currentScope = 'project';
+
+        const moduleSelect = document.getElementById('module-select');
+        const directoryWrapper = document.getElementById('directory-input-wrapper');
+        const directorySelect = document.getElementById('directory-select');
+        const directoryBrowseBtn = document.getElementById('directory-browse-btn');
+        const scopeSelect = document.getElementById('scope-select');
+
+        // 스타일 모드 변경 함수 정의
+        const btnIntellij = document.getElementById('style-intellij');
+        const btnEclipse = document.getElementById('style-eclipse');
+
+        btnIntellij.addEventListener('click', () => setStyleMode('intellij'));
+        btnEclipse.addEventListener('click', () => setStyleMode('eclipse'));
+
+        // 범위 탭 클릭 이벤트 및 상태 제어
+        const scopeTabContainer = document.getElementById('search-scope-tabs');
+        const scopeButtons = scopeTabContainer.querySelectorAll('.tab-btn');
+
+        scopeButtons.forEach(btn => {
+            btn.addEventListener('click', () => {
+                const newScope = btn.getAttribute('data-scope');
+                setSearchScope(newScope);
+            });
+        });
+
+        // 상세 컨트롤 변경 이벤트 바인딩
+        moduleSelect.addEventListener('change', () => {
+            saveState();
+            if (searchInput.value.trim()) triggerSearch();
+        });
+        directorySelect.addEventListener('change', () => {
+            saveState();
+            if (searchInput.value.trim()) triggerSearch();
+        });
+        scopeSelect.addEventListener('change', () => {
+            saveState();
+            if (searchInput.value.trim()) triggerSearch();
+        });
+
+        // 디렉터리 찾아보기 버튼 클릭 이벤트
+        directoryBrowseBtn.addEventListener('click', () => {
+            vscode.postMessage({ command: 'browseDirectory' });
+        });
+
+        function saveState() {
+            vscode.setState({ 
+                currentStyle: currentStyle, 
+                userPreviewHeight: userPreviewHeight, 
+                currentScope: currentScope,
+                selectedModule: moduleSelect.value,
+                selectedDirectory: directorySelect.value,
+                selectedScopeDetail: scopeSelect.value
+            });
+        }
+
+        function setSearchScope(scope) {
+            currentScope = scope;
+            scopeButtons.forEach(btn => {
+                if (btn.getAttribute('data-scope') === scope) {
+                    btn.classList.add('active');
+                } else {
+                    btn.classList.remove('active');
+                }
+            });
+
+            // 상세 제어 노출 토글
+            moduleSelect.style.display = (scope === 'module') ? 'block' : 'none';
+            directoryWrapper.style.display = (scope === 'directory') ? 'flex' : 'none';
+            scopeSelect.style.display = (scope === 'scope') ? 'block' : 'none';
+
+            // 상태 보존 저장
+            saveState();
+
+            // 검색어 입력값이 있으면 즉시 검색
+            if (searchInput.value.trim()) {
+                triggerSearch();
+            }
+        }
+
+        // 디렉토리 셀렉트 박스에 항목 추가 헬퍼 함수
+        function addDirectoryToSelect(dirPath) {
+            if (!dirPath) return;
+            let exists = false;
+            for (let i = 0; i < directorySelect.options.length; i++) {
+                if (directorySelect.options[i].value === dirPath) {
+                    exists = true;
+                    break;
+                }
+            }
+            if (!exists) {
+                const opt = document.createElement('option');
+                opt.value = dirPath;
+                opt.textContent = dirPath;
+                directorySelect.appendChild(opt);
+            }
+        }
+
+        function setStyleMode(mode) {
+            currentStyle = mode;
+            if (mode === 'intellij') {
+                document.body.classList.remove('eclipse-style');
+                document.body.classList.add('intellij-style');
+                btnIntellij.classList.add('active');
+                btnEclipse.classList.remove('active');
+            } else {
+                document.body.classList.remove('intellij-style');
+                document.body.classList.add('eclipse-style');
+                btnEclipse.classList.add('active');
+                btnIntellij.classList.remove('active');
+            }
+            
+            // 상태 보존 저장
+            saveState();
+            
+            // 백엔드에 글로벌 설정 저장 요청
+            vscode.postMessage({
+                command: 'saveStyleMode',
+                style: mode
+            });
+            
+            // 결과 렌더링 갱신
+            if (resultsData.length > 0) {
+                renderResults();
+            }
+        }
+
+        function adjustLayout() {
+            const count = resultsData.length;
+            const gridArea = document.querySelector('.grid-area');
+            const previewArea = document.getElementById('preview-area');
+            const resizer = document.getElementById('resizer');
+
+            // 공통 레이아웃 초기화 (하단 빈 공간 방지 및 리사이저 항상 표시)
+            resizer.style.display = 'block';
+            gridArea.style.flex = '1 1 0%';
+            gridArea.style.height = 'auto';
+            previewArea.style.flex = '0 0 auto';
+
+            if (count >= 1 && count <= 5) {
+                isCompactMode = true;
+                // 기본 높이일 경우 화면 절반 크기 지정, 이미 조절한 이력이 있으면 해당 높이 유지
+                if (userPreviewHeight === 250) {
+                    previewArea.style.height = '50vh';
+                } else {
+                    previewArea.style.height = userPreviewHeight + 'px';
+                }
+            } else {
+                isCompactMode = false;
+                previewArea.style.height = userPreviewHeight + 'px';
+            }
+            
+            // 상태 보존 저장
+            saveState();
+        }
 
         // 포커스 자동 지정
         searchInput.focus();
@@ -262,17 +737,21 @@ export function getWebviewContent(initialQuery: string = ''): string {
                 resultsData = [];
                 renderResults();
                 clearPreview();
-                statusText.innerText = "Ready";
+                statusText.innerText = t.ready;
                 return;
             }
 
-            statusText.innerText = "Searching...";
+            statusText.innerText = t.searching;
             // 200ms 디바운스
             searchDebounceTimer = setTimeout(() => {
                 vscode.postMessage({
                     command: 'search',
                     query: query,
-                    filter: filter
+                    filter: filter,
+                    scope: currentScope,
+                    moduleValue: moduleSelect.value,
+                    directoryValue: directorySelect.value,
+                    scopeValue: scopeSelect.value
                 });
             }, 200);
         }
@@ -294,6 +773,51 @@ export function getWebviewContent(initialQuery: string = ''): string {
                     searchInput.focus();
                     searchInput.select(); // 포커스 및 전체 선택
                     break;
+                case 'initScopeData':
+                    // 모듈 채우기
+                    moduleSelect.innerHTML = '';
+                    if (message.modules && message.modules.length > 0) {
+                        message.modules.forEach(mod => {
+                            const opt = document.createElement('option');
+                            opt.value = mod.value;
+                            opt.textContent = mod.label;
+                            moduleSelect.appendChild(opt);
+                        });
+                    } else {
+                        const opt = document.createElement('option');
+                        opt.value = '';
+                        opt.textContent = '-';
+                        moduleSelect.appendChild(opt);
+                    }
+
+                    // 디렉터리 이력 채우기
+                    directorySelect.innerHTML = '';
+                    if (message.directories && message.directories.length > 0) {
+                        message.directories.forEach(dir => {
+                            addDirectoryToSelect(dir);
+                        });
+                    }
+                    
+                    // 만약 복원했던 기존 선택 데이터가 있다면 셀렉트 박스값 복원
+                    const restoredState = vscode.getState() || {};
+                    if (restoredState.selectedModule && moduleSelect.value !== restoredState.selectedModule) {
+                        moduleSelect.value = restoredState.selectedModule;
+                    }
+                    if (restoredState.selectedDirectory && directorySelect.value !== restoredState.selectedDirectory) {
+                        addDirectoryToSelect(restoredState.selectedDirectory);
+                        directorySelect.value = restoredState.selectedDirectory;
+                    }
+                    break;
+                case 'directorySelected':
+                    if (message.path) {
+                        addDirectoryToSelect(message.path);
+                        directorySelect.value = message.path;
+                        saveState();
+                        if (searchInput.value.trim()) {
+                            triggerSearch();
+                        }
+                    }
+                    break;
             }
         });
 
@@ -306,40 +830,57 @@ export function getWebviewContent(initialQuery: string = ''): string {
                 resultsBody.innerHTML = \`
                     <tr>
                         <td colspan="3" style="text-align: center; color: var(--vscode-descriptionForeground); padding: 40px;">
-                            검색 결과가 없습니다.
+                            \${t.noResults}
                         </td>
                     </tr>
                 \`;
-                statusText.innerText = "No matches found";
+                statusText.innerText = t.noMatchesFound;
                 clearPreview();
                 return;
             }
 
-            statusText.innerText = \`Found \${resultsData.length} match(es)\`;
+            statusText.innerText = lang === 'ko'
+                ? \`\${resultsData.length}\${t.foundMatches}\`
+                : \`Found \${resultsData.length}\${t.foundMatches}\`;
 
             resultsData.forEach((item, index) => {
                 const tr = document.createElement('tr');
                 tr.dataset.index = index;
 
-                const tdLine = document.createElement('td');
-                tdLine.className = 'col-line';
-                tdLine.textContent = item.line;
+                if (currentStyle === 'intellij') {
+                    // IntelliJ 스타일 렌더링 (좌측 코드, 우측 경로+라인)
+                    const leftDiv = document.createElement('div');
+                    leftDiv.className = 'intellij-row-left';
+                    
+                    const query = searchInput.value;
+                    leftDiv.innerHTML = escapeHtmlAndHighlight(item.text, query);
+                    
+                    const rightDiv = document.createElement('div');
+                    rightDiv.className = 'intellij-row-right';
+                    rightDiv.textContent = \`\${item.relativePath} \${item.line}\`;
+                    
+                    tr.appendChild(leftDiv);
+                    tr.appendChild(rightDiv);
+                } else {
+                    // Eclipse 스타일 렌더링 (기존 테이블 구조)
+                    const tdLine = document.createElement('td');
+                    tdLine.className = 'col-line';
+                    tdLine.textContent = item.line;
 
-                const tdText = document.createElement('td');
-                tdText.className = 'col-text';
-                
-                // 검색어 하이라이트 처리
-                const query = searchInput.value;
-                tdText.innerHTML = escapeHtmlAndHighlight(item.text, query);
+                    const tdText = document.createElement('td');
+                    tdText.className = 'col-text';
+                    const query = searchInput.value;
+                    tdText.innerHTML = escapeHtmlAndHighlight(item.text, query);
 
-                const tdPath = document.createElement('td');
-                tdPath.className = 'col-path';
-                tdPath.textContent = item.relativePath;
-                tdPath.title = item.absolutePath;
+                    const tdPath = document.createElement('td');
+                    tdPath.className = 'col-path';
+                    tdPath.textContent = item.relativePath;
+                    tdPath.title = item.absolutePath;
 
-                tr.appendChild(tdLine);
-                tr.appendChild(tdText);
-                tr.appendChild(tdPath);
+                    tr.appendChild(tdLine);
+                    tr.appendChild(tdText);
+                    tr.appendChild(tdPath);
+                }
 
                 // 클릭 이벤트
                 tr.addEventListener('click', () => {
@@ -354,10 +895,11 @@ export function getWebviewContent(initialQuery: string = ''): string {
                 resultsBody.appendChild(tr);
             });
 
-            // 첫 번째 매칭 결과 자동 선택 및 미리보기 로딩
+            // 최초 진입 시 기본값이 이미 들어있다면 즉시 검색 실행
             if (resultsData.length > 0) {
                 selectRow(0);
             }
+            adjustLayout();
         }
 
         function selectRow(index) {
@@ -385,6 +927,7 @@ export function getWebviewContent(initialQuery: string = ''): string {
             });
         }
 
+        // 파일 편집기 열기
         function openFile(index) {
             if (index < 0 || index >= resultsData.length) return;
             const item = resultsData[index];
@@ -396,14 +939,16 @@ export function getWebviewContent(initialQuery: string = ''): string {
         }
 
         function clearPreview() {
-            previewFilePath.innerText = 'No File Selected';
-            previewContent.innerHTML = '// Select an item to preview code';
+            previewFilePath.innerText = t.noFileSelected;
+            previewContent.innerHTML = t.previewPlaceholder;
         }
 
         function renderPreview(filePath, contentLines, targetLine, query) {
             previewFilePath.innerText = filePath;
             previewFilePath.title = filePath;
             previewContent.innerHTML = '';
+
+            let targetSpan = null;
 
             contentLines.forEach(item => {
                 const lineSpan = document.createElement('span');
@@ -421,9 +966,14 @@ export function getWebviewContent(initialQuery: string = ''): string {
 
                 if (item.line === targetLine) {
                     lineSpan.className = 'highlight-line';
+                    targetSpan = lineSpan;
                 }
                 previewContent.appendChild(lineSpan);
             });
+
+            if (targetSpan) {
+                targetSpan.scrollIntoView({ block: 'center' });
+            }
         }
 
         // 키보드 네비게이션 및 ESC 제어
@@ -475,6 +1025,8 @@ export function getWebviewContent(initialQuery: string = ''): string {
                 
                 if (newHeight >= minHeight && newHeight <= maxHeight) {
                     previewArea.style.height = newHeight + 'px';
+                    userPreviewHeight = newHeight;
+                    vscode.setState({ currentStyle: currentStyle, userPreviewHeight: userPreviewHeight });
                 }
             }
 
@@ -487,6 +1039,70 @@ export function getWebviewContent(initialQuery: string = ''): string {
 
             window.addEventListener('mousemove', doDrag);
             window.addEventListener('mouseup', stopDrag);
+        }
+
+        // 가로 열 크기 조절 (Column Resizing) 로직
+        document.querySelectorAll('th').forEach(th => {
+            const resizer = th.querySelector('.col-resizer');
+            if (!resizer) return;
+            
+            resizer.addEventListener('mousedown', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                
+                const startX = e.clientX;
+                const startWidth = th.offsetWidth;
+                
+                resizer.classList.add('resizing');
+                document.body.style.userSelect = 'none';
+                document.body.style.cursor = 'col-resize';
+                
+                const allThs = document.querySelectorAll('th');
+                allThs.forEach(otherTh => {
+                    if (!otherTh.style.width) {
+                        otherTh.style.width = otherTh.offsetWidth + 'px';
+                    }
+                });
+                
+                function doDrag(e) {
+                    const dx = e.clientX - startX;
+                    const newWidth = Math.max(40, startWidth + dx);
+                    th.style.width = newWidth + 'px';
+                    th.style.minWidth = newWidth + 'px';
+                    th.style.maxWidth = newWidth + 'px';
+                }
+                
+                function stopDrag() {
+                    resizer.classList.remove('resizing');
+                    document.body.style.userSelect = '';
+                    document.body.style.cursor = '';
+                    window.removeEventListener('mousemove', doDrag);
+                    window.removeEventListener('mouseup', stopDrag);
+                }
+                
+                window.addEventListener('mousemove', doDrag);
+                window.addEventListener('mouseup', stopDrag);
+            });
+        });
+
+        // 로드 시 기존 저장된 상태(스타일 및 높이) 복원
+        const savedState = vscode.getState() || {};
+        userPreviewHeight = savedState.userPreviewHeight || 250;
+        const savedStyle = savedState.currentStyle || "${defaultStyle}";
+        const savedScope = savedState.currentScope || 'project';
+        setStyleMode(savedStyle);
+        setSearchScope(savedScope);
+
+        // 상세 필터 복원
+        if (savedState.selectedModule) {
+            moduleSelect.value = savedState.selectedModule;
+        }
+        if (savedState.selectedDirectory) {
+            addDirectoryToSelect(savedState.selectedDirectory);
+            directorySelect.value = savedState.selectedDirectory;
+        }
+        if (savedState.selectedScopeDetail) {
+            scopeSelect.value = savedState.selectedScopeDetail;
         }
 
         // 최초 진입 시 기본값이 이미 들어있다면 즉시 검색 실행
