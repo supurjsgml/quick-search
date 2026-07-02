@@ -466,7 +466,7 @@ export function getWebviewContent(initialQuery: string = '', locale: string = 'e
     <div class="search-area">
         <div class="search-box-wrapper">
             <span class="label">${t.searchPatternLabel}</span>
-            <input type="text" id="search-input" placeholder="${t.searchPlaceholder}" autofocus autocomplete="off" value="${escapedQuery}">
+            <input type="text" id="search-input" placeholder="${t.searchPlaceholder}" autocomplete="off" value="${escapedQuery}">
         </div>
         <div class="filter-box-wrapper">
             <span class="label">${t.fileNameFilterLabel}</span>
