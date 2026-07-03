@@ -934,7 +934,8 @@ export function getWebviewContent(initialQuery: string = '', locale: string = 'e
             vscode.postMessage({
                 command: 'openFile',
                 path: item.absolutePath,
-                line: item.line
+                line: item.line,
+                query: searchInput.value
             });
         }
 

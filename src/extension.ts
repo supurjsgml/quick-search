@@ -99,10 +99,10 @@ export function activate(context: vscode.ExtensionContext) {
                     await handlePreview(activePanel, message.path, message.line, message.query);
                     break;
                 case 'openFile':
-                    await handleOpenFile(message.path, message.line);
                     if (activePanel) {
                         activePanel.dispose();
                     }
+                    await handleOpenFile(message.path, message.line, message.query);
                     break;
                 case 'close':
                     activePanel.dispose();
@@ -400,20 +400,39 @@ async function handlePreview(panel: vscode.WebviewPanel, filePath: string, targe
 }
 
 // 실제 파일 편집기로 열기 및 타겟 라인으로 포커스
-async function handleOpenFile(filePath: string, targetLine: number) {
+async function handleOpenFile(filePath: string, targetLine: number, query?: string) {
     try {
         const fileUri = vscode.Uri.file(filePath);
         const doc = await vscode.workspace.openTextDocument(fileUri);
         
         // 파일 열기 및 특정 줄(Line) 선택/이동
-        const editor = await vscode.window.showTextDocument(doc, vscode.ViewColumn.One);
+        const editor = await vscode.window.showTextDocument(doc, {
+            viewColumn: vscode.ViewColumn.One,
+            preserveFocus: false
+        });
         
-        // 0-indexed 이므로 targetLine - 1
-        const position = new vscode.Position(targetLine - 1, 0);
-        editor.selection = new vscode.Selection(position, position);
+        const lineIndex = targetLine - 1;
+        let startChar = 0;
+        let endChar = 0;
+
+        if (query && query.trim()) {
+            const lineText = doc.lineAt(lineIndex).text;
+            const lowerLine = lineText.toLowerCase();
+            const cleanQuery = query.toLowerCase().trim();
+            const matchIndex = lowerLine.indexOf(cleanQuery);
+            if (matchIndex !== -1) {
+                startChar = matchIndex;
+                endChar = matchIndex + cleanQuery.length;
+            }
+        }
+
+        const startPosition = new vscode.Position(lineIndex, startChar);
+        const endPosition = new vscode.Position(lineIndex, endChar);
+        editor.selection = new vscode.Selection(startPosition, endPosition);
         
         // 해당 영역이 보이도록 스크롤 이동
-        editor.revealRange(new vscode.Range(position, position), vscode.TextEditorRevealType.InCenter);
+        const range = new vscode.Range(startPosition, endPosition);
+        editor.revealRange(range, vscode.TextEditorRevealType.InCenter);
     } catch (error: any) {
         vscode.window.showErrorMessage('파일을 여는 중 오류 발생: ' + error.message);
     }
