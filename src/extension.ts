@@ -1,7 +1,31 @@
 import * as vscode from 'vscode';
+import * as path from 'path';
+import * as fs from 'fs';
 import { getWebviewContent } from './webviewContent';
 
 export function activate(context: vscode.ExtensionContext) {
+    // 빌드 결과물(out/extension.js)이 변경되면 확장 호스트를 자동으로 재시작하여 변경 사항 즉시 반영
+    let reloadTimeout: NodeJS.Timeout | undefined;
+    const extensionJsPath = path.join(context.extensionPath, 'out', 'extension.js');
+    if (fs.existsSync(extensionJsPath)) {
+        const watcher = fs.watch(extensionJsPath, () => {
+            if (reloadTimeout) {
+                clearTimeout(reloadTimeout);
+            }
+            reloadTimeout = setTimeout(() => {
+                vscode.commands.executeCommand('workbench.action.restartExtensionHost');
+            }, 1000); // 파일 쓰기가 완전히 완료될 수 있도록 1초 대기 후 재시작
+        });
+        context.subscriptions.push({
+            dispose: () => {
+                watcher.close();
+                if (reloadTimeout) {
+                    clearTimeout(reloadTimeout);
+                }
+            }
+        });
+    }
+
     let activePanel: vscode.WebviewPanel | undefined = undefined;
 
     let disposable = vscode.commands.registerCommand('quick-search.open', () => {
