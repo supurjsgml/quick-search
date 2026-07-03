@@ -20,6 +20,7 @@ if not exist "%TARGET_DIR%" mkdir "%TARGET_DIR%"
 echo [2/3] 파일 복사 중...
 xcopy /Y /S /E "out" "%TARGET_DIR%\out\"
 copy /Y "package.json" "%TARGET_DIR%\"
+if exist "icon.png" copy /Y "icon.png" "%TARGET_DIR%\"
 
 echo [3/3] 배포 완료!
 echo 배포가 성공적으로 완료되었습니다.

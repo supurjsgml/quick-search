@@ -4,6 +4,7 @@
   "description": "IntelliJ and Eclipse style floating-like Quick Search using Webview Editor.",
   "version": "0.1.0",
   "publisher": "antigravity",
+  "icon": "icon.png",
   "engines": {
     "vscode": "^1.80.0"
   },
