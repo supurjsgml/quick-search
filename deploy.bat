@@ -22,6 +22,7 @@ xcopy /Y /S /E "out" "%TARGET_DIR%\out\"
 copy /Y "package.json" "%TARGET_DIR%\"
 if exist "icon.png" copy /Y "icon.png" "%TARGET_DIR%\"
 if exist "README.md" copy /Y "README.md" "%TARGET_DIR%\"
+if exist "sample.gif" copy /Y "sample.gif" "%TARGET_DIR%\"
 
 echo [3/3] 배포 완료!
 echo 변경 사항을 적용하려면 기존에 열려있던 Quick Search 탭을 닫고,
