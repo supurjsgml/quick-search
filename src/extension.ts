@@ -53,10 +53,13 @@ export function activate(context: vscode.ExtensionContext) {
         }
 
         // 새로운 Webview 탭 생성
+        const savedDockMode = context.globalState.get<boolean>('searchDockMode') || false;
+        const viewColumn = savedDockMode ? vscode.ViewColumn.Beside : vscode.ViewColumn.Active;
+
         activePanel = vscode.window.createWebviewPanel(
             'quickSearchTab',
             'Quick Search',
-            vscode.ViewColumn.Active,
+            viewColumn,
             {
                 enableScripts: true,
                 retainContextWhenHidden: true // 백그라운드로 가도 상태 유지
@@ -66,7 +69,7 @@ export function activate(context: vscode.ExtensionContext) {
         // HTML 콘텐츠 주입 (초기 검색어 및 에디터 언어 정보 전달)
         const locale = vscode.env.language || 'en';
         const savedStyle = context.globalState.get<string>('searchStyleMode') || 'intellij';
-        activePanel.webview.html = getWebviewContent(selectedText, locale, savedStyle);
+        activePanel.webview.html = getWebviewContent(selectedText, locale, savedStyle, savedDockMode);
 
         // 초기 검색 범위 데이터(모듈, 최근 디렉터리 등) 수집 및 전달
         sendInitialScopeData(activePanel);
@@ -81,6 +84,13 @@ export function activate(context: vscode.ExtensionContext) {
             if (!activePanel) { return; }
 
             switch (message.command) {
+                case 'saveDockMode':
+                    await context.globalState.update('searchDockMode', message.dockMode);
+                    if (activePanel) {
+                        const targetColumn = message.dockMode ? vscode.ViewColumn.Beside : vscode.ViewColumn.One;
+                        activePanel.reveal(targetColumn);
+                    }
+                    break;
                 case 'saveStyleMode':
                     await context.globalState.update('searchStyleMode', message.style);
                     break;
@@ -99,7 +109,7 @@ export function activate(context: vscode.ExtensionContext) {
                     await handlePreview(activePanel, message.path, message.line, message.query);
                     break;
                 case 'openFile':
-                    if (activePanel) {
+                    if (!message.dockMode && activePanel) {
                         activePanel.dispose();
                     }
                     await handleOpenFile(message.path, message.line, message.query);

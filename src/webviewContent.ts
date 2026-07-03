@@ -1,4 +1,4 @@
-export function getWebviewContent(initialQuery: string = '', locale: string = 'en', defaultStyle: string = 'intellij'): string {
+export function getWebviewContent(initialQuery: string = '', locale: string = 'en', defaultStyle: string = 'intellij', defaultDockMode: boolean = false): string {
     // HTML 이스케이프 (인풋 태그 내 주입 시 깨짐 방지)
     const escapedQuery = initialQuery
         .replace(/&/g, "&amp;")
@@ -32,7 +32,8 @@ export function getWebviewContent(initialQuery: string = '', locale: string = 'e
             scopeOptProjectFiles: "프로젝트 파일",
             scopeOptProductionFiles: "프로젝트 프로덕션 파일",
             scopeOptTestFiles: "프로젝트 테스트 파일",
-            scopeOptOpenFiles: "최근에 본 파일 (열린 파일)"
+            scopeOptOpenFiles: "최근에 본 파일 (열린 파일)",
+            keepOpen: "화면 분할"
         },
         en: {
             title: "Quick Search",
@@ -57,7 +58,8 @@ export function getWebviewContent(initialQuery: string = '', locale: string = 'e
             scopeOptProjectFiles: "Project Files",
             scopeOptProductionFiles: "Project Production Files",
             scopeOptTestFiles: "Project Test Files",
-            scopeOptOpenFiles: "Recently Viewed Files (Open Files)"
+            scopeOptOpenFiles: "Recently Viewed Files (Open Files)",
+            keepOpen: "Keep Open"
         }
     };
 
@@ -445,7 +447,7 @@ export function getWebviewContent(initialQuery: string = '', locale: string = 'e
         }
         .style-toggle-btn {
             background: transparent;
-            border: 1px solid var(--vscode-button-border, #80808050);
+            border: 1px solid var(--vscode-panel-border, #80808030);
             color: var(--vscode-descriptionForeground, #8c8c8c);
             padding: 4px 8px;
             cursor: pointer;
@@ -453,10 +455,28 @@ export function getWebviewContent(initialQuery: string = '', locale: string = 'e
             font-size: 11px;
             transition: all 0.2s;
         }
+        .style-toggle-btn:hover {
+            border-color: var(--vscode-focusBorder, #007acc);
+            color: var(--vscode-foreground, #ffffff);
+        }
         .style-toggle-btn.active {
-            background-color: var(--vscode-button-background, #007acc);
-            color: var(--vscode-button-foreground, #ffffff);
-            border-color: var(--vscode-button-background, #007acc);
+            background-color: var(--vscode-button-background, #007acc) !important;
+            color: var(--vscode-button-foreground, #ffffff) !important;
+            border: 1px solid var(--vscode-button-background, #007acc) !important;
+            font-weight: bold;
+        }
+        .intellij-style .style-toggle-btn {
+            background-color: #3b3f41;
+            color: #bbbbbb;
+            border: 1px solid #646464;
+        }
+        .intellij-style .style-toggle-btn:hover {
+            background-color: #4c5052;
+        }
+        .intellij-style .style-toggle-btn.active {
+            background-color: #244161;
+            color: #bbbbbb;
+            border-color: #3b72ab;
         }
     </style>
 </head>
@@ -505,6 +525,7 @@ export function getWebviewContent(initialQuery: string = '', locale: string = 'e
         </div>
 
         <div class="tabs-right">
+            <button class="style-toggle-btn" id="btn-keep-open">${t.keepOpen}</button>
             <button class="style-toggle-btn" id="style-intellij">IntelliJ</button>
             <button class="style-toggle-btn" id="style-eclipse">Eclipse</button>
         </div>
@@ -565,6 +586,7 @@ export function getWebviewContent(initialQuery: string = '', locale: string = 'e
         let isCompactMode = false;
         let currentStyle = 'intellij';
         let currentScope = 'project';
+        let dockMode = false;
 
         const moduleSelect = document.getElementById('module-select');
         const directoryWrapper = document.getElementById('directory-input-wrapper');
@@ -575,9 +597,13 @@ export function getWebviewContent(initialQuery: string = '', locale: string = 'e
         // 스타일 모드 변경 함수 정의
         const btnIntellij = document.getElementById('style-intellij');
         const btnEclipse = document.getElementById('style-eclipse');
+        const btnKeepOpen = document.getElementById('btn-keep-open');
 
         btnIntellij.addEventListener('click', () => setStyleMode('intellij'));
         btnEclipse.addEventListener('click', () => setStyleMode('eclipse'));
+        btnKeepOpen.addEventListener('click', () => {
+            setDockMode(!dockMode);
+        });
 
         // 범위 탭 클릭 이벤트 및 상태 제어
         const scopeTabContainer = document.getElementById('search-scope-tabs');
@@ -616,7 +642,22 @@ export function getWebviewContent(initialQuery: string = '', locale: string = 'e
                 currentScope: currentScope,
                 selectedModule: moduleSelect.value,
                 selectedDirectory: directorySelect.value,
-                selectedScopeDetail: scopeSelect.value
+                selectedScopeDetail: scopeSelect.value,
+                dockMode: dockMode
+            });
+        }
+
+        function setDockMode(active) {
+            dockMode = active;
+            if (active) {
+                btnKeepOpen.classList.add('active');
+            } else {
+                btnKeepOpen.classList.remove('active');
+            }
+            saveState();
+            vscode.postMessage({
+                command: 'saveDockMode',
+                dockMode: active
             });
         }
 
@@ -935,7 +976,8 @@ export function getWebviewContent(initialQuery: string = '', locale: string = 'e
                 command: 'openFile',
                 path: item.absolutePath,
                 line: item.line,
-                query: searchInput.value
+                query: searchInput.value,
+                dockMode: dockMode
             });
         }
 
@@ -1091,8 +1133,10 @@ export function getWebviewContent(initialQuery: string = '', locale: string = 'e
         userPreviewHeight = savedState.userPreviewHeight || 250;
         const savedStyle = savedState.currentStyle || "${defaultStyle}";
         const savedScope = savedState.currentScope || 'project';
+        const savedDockMode = savedState.dockMode !== undefined ? savedState.dockMode : ${defaultDockMode};
         setStyleMode(savedStyle);
         setSearchScope(savedScope);
+        setDockMode(savedDockMode);
 
         // 상세 필터 복원
         if (savedState.selectedModule) {
