@@ -254,17 +254,26 @@ export function getWebviewContent(initialQuery: string = '', locale: string = 'e
             line-height: 1.5;
             white-space: pre;
         }
-        .highlight-line {
-            background-color: var(--vscode-editor-wordHighlightBackground, #57575740);
+        /* 일반 미리보기 줄 및 code 태그 배경 투명화 및 글자색 상속 */
+        .preview-body code,
+        .preview-body span {
+            background-color: transparent !important;
+            background: none !important;
+            color: inherit !important;
+        }
+        /* 선택된 타겟 줄 하이라이트 */
+        .preview-body span.highlight-line {
+            background-color: var(--vscode-editor-wordHighlightBackground, #57575740) !important;
             display: inline-block;
             width: 100%;
             font-weight: bold;
-            border-left: 3px solid var(--vscode-focusBorder, #007acc);
+            border-left: 3px solid var(--vscode-focusBorder, #007acc) !important;
             padding-left: 2px;
         }
-        .match-term {
-            background-color: var(--vscode-editor-findMatchHighlightBackground, #ea5c0050);
-            border-bottom: 1px solid var(--vscode-editor-findMatchBorder, #ea5c00);
+        /* 매칭된 검색 키워드 하이라이트 */
+        .preview-body span.match-term {
+            background-color: var(--vscode-editor-findMatchHighlightBackground, #ea5c0050) !important;
+            border-bottom: 1px solid var(--vscode-editor-findMatchBorder, #ea5c00) !important;
             border-radius: 1px;
         }
         .status-bar {
@@ -276,6 +285,19 @@ export function getWebviewContent(initialQuery: string = '', locale: string = 'e
         }
 
         /* IntelliJ Style 오버라이드 */
+        /* IntelliJ Style 레이아웃 공통 규칙 */
+        .intellij-style thead {
+            display: none;
+        }
+        .intellij-style tr {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            cursor: pointer;
+            padding: 6px 15px;
+        }
+
+        /* --- IntelliJ 스타일 기본 색상 (0.1.0 Darcula 롤백) --- */
         .intellij-style {
             background-color: #2b2b2b;
             color: #a9b7c6;
@@ -293,18 +315,8 @@ export function getWebviewContent(initialQuery: string = '', locale: string = 'e
             background-color: #2b2b2b;
             border: 1px solid #323232;
         }
-        /* IntelliJ 모드에서는 테이블 헤더를 숨김 */
-        .intellij-style thead {
-            display: none;
-        }
-        /* IntelliJ 모드에서는 테이블 행을 flexbox 리스트로 처리 */
         .intellij-style tr {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
             border-bottom: 1px solid #323232;
-            cursor: pointer;
-            padding: 6px 15px;
         }
         .intellij-style tr:hover {
             background-color: #2f3032;
@@ -312,6 +324,35 @@ export function getWebviewContent(initialQuery: string = '', locale: string = 'e
         .intellij-style tr.selected {
             background-color: #244161 !important;
             color: #bbbbbb !important;
+        }
+
+        /* --- 라이트 모드 하에서의 IntelliJ 스타일 색상 --- */
+        .vscode-light.intellij-style {
+            background-color: #f7f8fa;
+            color: #1f2226;
+        }
+        .vscode-light.intellij-style input[type="text"] {
+            background-color: #ffffff;
+            color: #1f2226;
+            border: 1px solid #d3d5db;
+            border-radius: 3px;
+        }
+        .vscode-light.intellij-style input[type="text"]:focus {
+            border-color: #3574f0;
+        }
+        .vscode-light.intellij-style .grid-area {
+            background-color: #ffffff;
+            border: 1px solid #d3d5db;
+        }
+        .vscode-light.intellij-style tr {
+            border-bottom: 1px solid #d3d5db;
+        }
+        .vscode-light.intellij-style tr:hover {
+            background-color: #f0f1f5;
+        }
+        .vscode-light.intellij-style tr.selected {
+            background-color: #e4efff !important;
+            color: #1f2226 !important;
         }
         .intellij-row-left {
             flex: 1;
@@ -332,6 +373,7 @@ export function getWebviewContent(initialQuery: string = '', locale: string = 'e
             color: #a9b7c6;
         }
         
+        /* --- IntelliJ 스타일 미리보기 영역 (0.1.0 Darcula 롤백) --- */
         .intellij-style .preview-area {
             background-color: #2b2b2b;
             border: 1px solid #323232;
@@ -345,9 +387,92 @@ export function getWebviewContent(initialQuery: string = '', locale: string = 'e
             background-color: #2b2b2b;
             color: #a9b7c6;
         }
-        .intellij-style .highlight-line {
-            background-color: #214283;
-            border-left: 3px solid #3b72ab;
+        .intellij-style .preview-body span {
+            color: #a9b7c6 !important;
+        }
+        .intellij-style .preview-body span.highlight-line {
+            background-color: #214283 !important;
+            border-left: 3px solid #3b72ab !important;
+            color: #a9b7c6 !important;
+        }
+
+        .vscode-dark.eclipse-style .preview-area {
+            background-color: #1e1e1e;
+            border: 1px solid var(--vscode-panel-border, #80808050);
+        }
+        .vscode-dark.eclipse-style .preview-header {
+            background-color: var(--vscode-editorWidget-background, #252526);
+            color: #d4d4d4;
+            border-bottom: 1px solid var(--vscode-panel-border, #80808050);
+        }
+        .vscode-dark.eclipse-style .preview-body {
+            background-color: #1e1e1e;
+            color: #d4d4d4;
+        }
+        .vscode-dark.eclipse-style .preview-body span {
+            color: #d4d4d4 !important;
+        }
+        .vscode-dark.eclipse-style .preview-body span.highlight-line {
+            background-color: var(--vscode-editor-wordHighlightBackground, #57575740) !important;
+            border-left: 3px solid var(--vscode-focusBorder, #007acc) !important;
+            color: #ffffff !important;
+        }
+
+        /* --- 라이트 모드(화이트 모드) 전용 스타일 오버라이드 --- */
+        .vscode-light.intellij-style .preview-area {
+            background-color: #ffffff;
+            border: 1px solid #d3d5db;
+        }
+        .vscode-light.intellij-style .preview-header {
+            background-color: #ebecf0;
+            color: #1f2226;
+            border-bottom: 1px solid #d3d5db;
+        }
+        .vscode-light.intellij-style .preview-body {
+            background-color: #ffffff;
+            color: #1f2226;
+        }
+        .vscode-light.intellij-style .preview-body span {
+            color: #1f2226 !important;
+        }
+        .vscode-light.intellij-style .preview-body span.highlight-line {
+            background-color: #e4efff !important;
+            border-left: 3px solid #3574f0 !important;
+            color: #000000 !important;
+        }
+
+        .vscode-light.eclipse-style .preview-area {
+            background-color: #ffffff;
+            border: 1px solid var(--vscode-panel-border, #80808050);
+        }
+        .vscode-light.eclipse-style .preview-header {
+            background-color: #f3f3f3;
+            color: #333333;
+            border-bottom: 1px solid var(--vscode-panel-border, #80808050);
+        }
+        .vscode-light.eclipse-style .preview-body {
+            background-color: #ffffff;
+            color: #333333;
+        }
+        .vscode-light.eclipse-style .preview-body span {
+            color: #333333 !important;
+        }
+        .vscode-light.eclipse-style .preview-body span.highlight-line {
+            background-color: #ffe3e3 !important;
+            border-left: 3px solid #ff4d4d !important;
+            color: #000000 !important;
+        }
+        
+        /* 이클립스 모드 라이트 테마 선택 행 및 테이블 배경 통일 */
+        .vscode-light.eclipse-style .grid-area {
+            background-color: #ffffff !important;
+        }
+        .vscode-light.eclipse-style tr:hover {
+            background-color: #f0f1f5 !important;
+        }
+        .vscode-light.eclipse-style tr.selected {
+            background-color: #e4efff !important;
+            color: #1f2226 !important;
         }
         
         /* 범위 탭 및 스타일 스위처 디자인 */
@@ -425,6 +550,25 @@ export function getWebviewContent(initialQuery: string = '', locale: string = 'e
         .intellij-style .browse-btn:hover {
             background-color: #4c5052;
         }
+
+        .vscode-light.intellij-style .scope-select {
+            background-color: #ffffff;
+            color: #1f2226;
+            border: 1px solid #d3d5db;
+            border-radius: 3px;
+        }
+        .vscode-light.intellij-style .scope-select:focus {
+            border-color: #3574f0;
+        }
+        .vscode-light.intellij-style .browse-btn {
+            background-color: #ffffff;
+            color: #1f2226;
+            border: 1px solid #d3d5db;
+            border-radius: 3px;
+        }
+        .vscode-light.intellij-style .browse-btn:hover {
+            background-color: #f0f1f5;
+        }
         .eclipse-style #scope-details-area {
             display: none !important;
         }
@@ -474,9 +618,24 @@ export function getWebviewContent(initialQuery: string = '', locale: string = 'e
             background-color: #4c5052;
         }
         .intellij-style .style-toggle-btn.active {
-            background-color: #244161;
-            color: #bbbbbb;
-            border-color: #3b72ab;
+            background-color: #244161 !important;
+            color: #bbbbbb !important;
+            border-color: #3b72ab !important;
+        }
+
+        .vscode-light.intellij-style .style-toggle-btn {
+            background-color: #ffffff;
+            color: #1f2226;
+            border: 1px solid #d3d5db;
+        }
+        .vscode-light.intellij-style .style-toggle-btn:hover {
+            background-color: #f0f1f5;
+        }
+        .vscode-light.intellij-style .style-toggle-btn.active {
+            background-color: #e4efff !important;
+            color: #3574f0 !important;
+            border-color: #3574f0 !important;
+            font-weight: bold;
         }
     </style>
 </head>
