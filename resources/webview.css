@@ -1,0 +1,565 @@
+body {
+    background-color: var(--vscode-editor-background, #1e1e1e);
+    color: var(--vscode-editor-foreground, #d4d4d4);
+    font-family: var(--vscode-font-family, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif);
+    font-size: var(--vscode-font-size, 13px);
+    margin: 0;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    box-sizing: border-box;
+    overflow: hidden;
+}
+
+/* 검색 입력 창 */
+.search-area {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 10px;
+    align-items: center;
+}
+.search-box-wrapper {
+    flex: 2;
+    display: flex;
+    flex-direction: column;
+}
+.filter-box-wrapper {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+}
+.label {
+    font-size: 11px;
+    color: var(--vscode-descriptionForeground, #8c8c8c);
+    margin-bottom: 4px;
+    text-transform: uppercase;
+    font-weight: bold;
+}
+input[type="text"] {
+    background-color: var(--vscode-input-background, #3c3c3c);
+    color: var(--vscode-input-foreground, #cccccccc);
+    border: 1px solid var(--vscode-input-border, #3c3c3c);
+    padding: 6px 8px;
+    border-radius: 2px;
+    font-family: inherit;
+    font-size: inherit;
+    outline: none;
+}
+input[type="text"]:focus {
+    border-color: var(--vscode-focusBorder, #007acc);
+}
+
+/* 결과 그리드 테이블 */
+.grid-area {
+    flex: 1;
+    border: 1px solid var(--vscode-panel-border, #80808050);
+    border-radius: 2px;
+    overflow-y: auto;
+    background-color: var(--vscode-list-dropBackground, #252526);
+    min-height: 100px;
+}
+table {
+    width: 100%;
+    border-collapse: collapse;
+    text-align: left;
+    table-layout: fixed;
+}
+th, td {
+    padding: 6px 10px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    border-right: 1px solid var(--vscode-panel-border, #80808020);
+}
+th:last-child, td:last-child {
+    border-right: none;
+}
+th {
+    background-color: var(--vscode-titleBar-activeBackground, #2d2d2d);
+    color: var(--vscode-titleBar-activeForeground, #cccccc);
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    font-weight: bold;
+    border-bottom: 1px solid var(--vscode-panel-border, #80808050);
+}
+tr {
+    cursor: pointer;
+    border-bottom: 1px solid var(--vscode-panel-border, #8080801a);
+}
+tr:hover {
+    background-color: var(--vscode-list-hoverBackground, #2a2d2e);
+}
+tr.selected {
+    background-color: var(--vscode-list-activeSelectionBackground, #04395e) !important;
+    color: var(--vscode-list-activeSelectionForeground, #ffffff) !important;
+}
+.col-line { 
+    width: 70px; 
+    text-align: right; 
+    color: var(--vscode-editorLineNumber-foreground, #858585); 
+    position: relative; 
+    padding-right: 15px; 
+}
+.col-text { 
+    width: auto; 
+    font-family: var(--vscode-editor-font-family, Consolas, monospace); 
+    position: relative; 
+    padding-left: 15px; 
+}
+.col-path { 
+    width: 180px; 
+    color: var(--vscode-descriptionForeground, #8c8c8c); 
+    font-size: 11px; 
+    position: relative; 
+}
+
+tr.selected .col-line, tr.selected .col-path {
+    color: inherit;
+}
+
+/* 가로 열 크기 조절용 핸들 */
+.col-resizer {
+    position: absolute;
+    top: 0;
+    right: -4px;
+    width: 8px;
+    cursor: col-resize;
+    user-select: none;
+    height: 100%;
+    z-index: 12;
+    background-color: transparent;
+}
+.col-resizer:hover, .col-resizer.resizing {
+    background-color: var(--vscode-focusBorder, #007acc);
+}
+
+/* 세로 크기 조절바 (Resizer Splitter) */
+.resizer {
+    height: 6px;
+    background-color: var(--vscode-panel-border, #80808030);
+    cursor: ns-resize;
+    transition: background-color 0.2s;
+    margin: 3px 0;
+    border-radius: 1px;
+    flex-shrink: 0;
+}
+.resizer:hover, .resizer.active {
+    background-color: var(--vscode-focusBorder, #007acc);
+}
+
+/* 소스 미리보기 패널 */
+.preview-area {
+    height: 250px;
+    border: 1px solid var(--vscode-panel-border, #80808050);
+    border-radius: 2px;
+    display: flex;
+    flex-direction: column;
+    background-color: var(--vscode-editor-background, #1e1e1e);
+    flex-shrink: 0;
+}
+.preview-header {
+    background-color: var(--vscode-editorWidget-background, #252526);
+    padding: 6px 10px;
+    font-size: 11px;
+    color: var(--vscode-descriptionForeground, #8c8c8c);
+    border-bottom: 1px solid var(--vscode-panel-border, #80808050);
+    font-weight: bold;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.preview-body {
+    flex: 1;
+    overflow: auto;
+    margin: 0;
+    padding: 10px;
+    font-family: var(--vscode-editor-font-family, Consolas, monospace);
+    font-size: var(--vscode-editor-font-size, 12px);
+    line-height: 1.5;
+    white-space: pre;
+}
+/* 일반 미리보기 줄 및 code 태그 배경 투명화 및 글자색 상속 */
+.preview-body code,
+.preview-body span {
+    background-color: transparent !important;
+    background: none !important;
+    color: inherit !important;
+}
+/* 선택된 타겟 줄 하이라이트 */
+.preview-body span.highlight-line {
+    background-color: var(--vscode-editor-wordHighlightBackground, #57575740) !important;
+    display: inline-block;
+    width: 100%;
+    font-weight: bold;
+    border-left: 3px solid var(--vscode-focusBorder, #007acc) !important;
+    padding-left: 2px;
+}
+/* 매칭된 검색 키워드 하이라이트 */
+.preview-body span.match-term {
+    background-color: var(--vscode-editor-findMatchHighlightBackground, #ea5c0050) !important;
+    border-bottom: 1px solid var(--vscode-editor-findMatchBorder, #ea5c00) !important;
+    border-radius: 1px;
+}
+.status-bar {
+    margin-top: 6px;
+    font-size: 11px;
+    color: var(--vscode-descriptionForeground, #8c8c8c);
+    display: flex;
+    justify-content: space-between;
+}
+
+/* IntelliJ Style 오버라이드 */
+/* IntelliJ Style 레이아웃 공통 규칙 */
+.intellij-style thead {
+    display: none;
+}
+.intellij-style tr {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    cursor: pointer;
+    padding: 6px 15px;
+}
+
+/* --- IntelliJ 스타일 기본 색상 (0.1.0 Darcula 롤백) --- */
+.intellij-style {
+    background-color: #2b2b2b;
+    color: #a9b7c6;
+}
+.intellij-style input[type="text"] {
+    background-color: #3c3f41;
+    color: #bbbbbb;
+    border: 1px solid #646464;
+    border-radius: 3px;
+}
+.intellij-style input[type="text"]:focus {
+    border-color: #3b72ab;
+}
+.intellij-style .grid-area {
+    background-color: #2b2b2b;
+    border: 1px solid #323232;
+}
+.intellij-style tr {
+    border-bottom: 1px solid #323232;
+}
+.intellij-style tr:hover {
+    background-color: #2f3032;
+}
+.intellij-style tr.selected {
+    background-color: #244161 !important;
+    color: #bbbbbb !important;
+}
+
+/* --- 라이트 모드 하에서의 IntelliJ 스타일 색상 --- */
+.vscode-light.intellij-style {
+    background-color: #f7f8fa;
+    color: #1f2226;
+}
+.vscode-light.intellij-style input[type="text"] {
+    background-color: #ffffff;
+    color: #1f2226;
+    border: 1px solid #d3d5db;
+    border-radius: 3px;
+}
+.vscode-light.intellij-style input[type="text"]:focus {
+    border-color: #3574f0;
+}
+.vscode-light.intellij-style .grid-area {
+    background-color: #ffffff;
+    border: 1px solid #d3d5db;
+}
+.vscode-light.intellij-style tr {
+    border-bottom: 1px solid #d3d5db;
+}
+.vscode-light.intellij-style tr:hover {
+    background-color: #f0f1f5;
+}
+.vscode-light.intellij-style tr.selected {
+    background-color: #e4efff !important;
+    color: #1f2226 !important;
+}
+.intellij-row-left {
+    flex: 1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    font-family: var(--vscode-editor-font-family, Consolas, monospace);
+    padding-right: 15px;
+    text-align: left;
+}
+.intellij-row-right {
+    flex-shrink: 0;
+    color: #787878;
+    font-size: 11px;
+    text-align: right;
+}
+.intellij-style tr.selected .intellij-row-right {
+    color: #a9b7c6;
+}
+
+/* --- IntelliJ 스타일 미리보기 영역 (0.1.0 Darcula 롤백) --- */
+.intellij-style .preview-area {
+    background-color: #2b2b2b;
+    border: 1px solid #323232;
+}
+.intellij-style .preview-header {
+    background-color: #3c3f41;
+    color: #a9b7c6;
+    border-bottom: 1px solid #323232;
+}
+.intellij-style .preview-body {
+    background-color: #2b2b2b;
+    color: #a9b7c6;
+}
+.intellij-style .preview-body span {
+    color: #a9b7c6 !important;
+}
+.intellij-style .preview-body span.highlight-line {
+    background-color: #214283 !important;
+    border-left: 3px solid #3b72ab !important;
+    color: #a9b7c6 !important;
+}
+
+.vscode-dark.eclipse-style .preview-area {
+    background-color: #1e1e1e;
+    border: 1px solid var(--vscode-panel-border, #80808050);
+}
+.vscode-dark.eclipse-style .preview-header {
+    background-color: var(--vscode-editorWidget-background, #252526);
+    color: #d4d4d4;
+    border-bottom: 1px solid var(--vscode-panel-border, #80808050);
+}
+.vscode-dark.eclipse-style .preview-body {
+    background-color: #1e1e1e;
+    color: #d4d4d4;
+}
+.vscode-dark.eclipse-style .preview-body span {
+    color: #d4d4d4 !important;
+}
+.vscode-dark.eclipse-style .preview-body span.highlight-line {
+    background-color: var(--vscode-editor-wordHighlightBackground, #57575740) !important;
+    border-left: 3px solid var(--vscode-focusBorder, #007acc) !important;
+    color: #ffffff !important;
+}
+
+/* --- 라이트 모드(화이트 모드) 전용 스타일 오버라이드 --- */
+.vscode-light.intellij-style .preview-area {
+    background-color: #ffffff;
+    border: 1px solid #d3d5db;
+}
+.vscode-light.intellij-style .preview-header {
+    background-color: #ebecf0;
+    color: #1f2226;
+    border-bottom: 1px solid #d3d5db;
+}
+.vscode-light.intellij-style .preview-body {
+    background-color: #ffffff;
+    color: #1f2226;
+}
+.vscode-light.intellij-style .preview-body span {
+    color: #1f2226 !important;
+}
+.vscode-light.intellij-style .preview-body span.highlight-line {
+    background-color: #e4efff !important;
+    border-left: 3px solid #3574f0 !important;
+    color: #000000 !important;
+}
+
+.vscode-light.eclipse-style .preview-area {
+    background-color: #ffffff;
+    border: 1px solid var(--vscode-panel-border, #80808050);
+}
+.vscode-light.eclipse-style .preview-header {
+    background-color: #f3f3f3;
+    color: #333333;
+    border-bottom: 1px solid var(--vscode-panel-border, #80808050);
+}
+.vscode-light.eclipse-style .preview-body {
+    background-color: #ffffff;
+    color: #333333;
+}
+.vscode-light.eclipse-style .preview-body span {
+    color: #333333 !important;
+}
+.vscode-light.eclipse-style .preview-body span.highlight-line {
+    background-color: #ffe3e3 !important;
+    border-left: 3px solid #ff4d4d !important;
+    color: #000000 !important;
+}
+
+/* 이클립스 모드 라이트 테마 선택 행 및 테이블 배경 통일 */
+.vscode-light.eclipse-style .grid-area {
+    background-color: #ffffff !important;
+}
+.vscode-light.eclipse-style tr:hover {
+    background-color: #f0f1f5 !important;
+}
+.vscode-light.eclipse-style tr.selected {
+    background-color: #e4efff !important;
+    color: #1f2226 !important;
+}
+
+/* 범위 탭 및 스타일 스위처 디자인 */
+.scope-tabs {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+    border-bottom: 1px solid var(--vscode-panel-border, #80808030);
+    padding-bottom: 6px;
+    flex-shrink: 0;
+}
+.tabs-left {
+    display: flex;
+    gap: 4px;
+}
+.tabs-right {
+    display: flex;
+    gap: 4px;
+    margin-left: auto;
+}
+/* 스타일 모드에 따른 범위 탭 노출 여부 제어 */
+.eclipse-style .tabs-left {
+    display: none;
+}
+.intellij-style .tabs-left {
+    display: flex;
+}
+/* 상세 검색 옵션 UI 스타일 */
+.scope-select {
+    background-color: var(--vscode-input-background, #3c3c3c);
+    color: var(--vscode-input-foreground, #cccccc);
+    border: 1px solid var(--vscode-input-border, #3c3c3c);
+    padding: 4px 6px;
+    font-size: 11px;
+    border-radius: 2px;
+    font-family: inherit;
+    outline: none;
+    max-width: 320px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    overflow: hidden;
+}
+.scope-select:focus {
+    border-color: var(--vscode-focusBorder, #007acc);
+}
+.browse-btn {
+    background-color: var(--vscode-button-background, #007acc);
+    color: var(--vscode-button-foreground, #ffffff);
+    border: none;
+    padding: 4px 8px;
+    border-radius: 2px;
+    cursor: pointer;
+    font-size: 11px;
+    font-weight: bold;
+}
+.browse-btn:hover {
+    background-color: var(--vscode-button-hoverBackground, #118ad4);
+}
+.intellij-style .scope-select {
+    background-color: #3b3f41;
+    color: #bbbbbb;
+    border: 1px solid #646464;
+    border-radius: 3px;
+}
+.intellij-style .scope-select:focus {
+    border-color: #3b72ab;
+}
+.intellij-style .browse-btn {
+    background-color: #3b3f41;
+    color: #bbbbbb;
+    border: 1px solid #646464;
+    border-radius: 3px;
+}
+.intellij-style .browse-btn:hover {
+    background-color: #4c5052;
+}
+
+.vscode-light.intellij-style .scope-select {
+    background-color: #ffffff;
+    color: #1f2226;
+    border: 1px solid #d3d5db;
+    border-radius: 3px;
+}
+.vscode-light.intellij-style .scope-select:focus {
+    border-color: #3574f0;
+}
+.vscode-light.intellij-style .browse-btn {
+    background-color: #ffffff;
+    color: #1f2226;
+    border: 1px solid #d3d5db;
+    border-radius: 3px;
+}
+.vscode-light.intellij-style .browse-btn:hover {
+    background-color: #f0f1f5;
+}
+.eclipse-style #scope-details-area {
+    display: none !important;
+}
+.tab-btn {
+    background: transparent;
+    border: 1px solid transparent;
+    color: var(--vscode-descriptionForeground, #8c8c8c);
+    padding: 4px 10px;
+    cursor: pointer;
+    border-radius: 3px;
+    font-size: 11px;
+}
+.tab-btn:hover {
+    background-color: var(--vscode-list-hoverBackground, #2a2d2e);
+}
+.tab-btn.active {
+    background-color: var(--vscode-button-background, #007acc);
+    color: var(--vscode-button-foreground, #ffffff);
+    font-weight: bold;
+}
+.style-toggle-btn {
+    background: transparent;
+    border: 1px solid var(--vscode-panel-border, #80808030);
+    color: var(--vscode-descriptionForeground, #8c8c8c);
+    padding: 4px 8px;
+    cursor: pointer;
+    border-radius: 3px;
+    font-size: 11px;
+    transition: all 0.2s;
+}
+.style-toggle-btn:hover {
+    border-color: var(--vscode-focusBorder, #007acc);
+    color: var(--vscode-foreground, #ffffff);
+}
+.style-toggle-btn.active {
+    background-color: var(--vscode-button-background, #007acc) !important;
+    color: var(--vscode-button-foreground, #ffffff) !important;
+    border: 1px solid var(--vscode-button-background, #007acc) !important;
+    font-weight: bold;
+}
+.intellij-style .style-toggle-btn {
+    background-color: #3b3f41;
+    color: #bbbbbb;
+    border: 1px solid #646464;
+}
+.intellij-style .style-toggle-btn:hover {
+    background-color: #4c5052;
+}
+.intellij-style .style-toggle-btn.active {
+    background-color: #244161 !important;
+    color: #bbbbbb !important;
+    border-color: #3b72ab !important;
+}
+
+.vscode-light.intellij-style .style-toggle-btn {
+    background-color: #ffffff;
+    color: #1f2226;
+    border: 1px solid #d3d5db;
+}
+.vscode-light.intellij-style .style-toggle-btn:hover {
+    background-color: #f0f1f5;
+}
+.vscode-light.intellij-style .style-toggle-btn.active {
+    background-color: #e4efff !important;
+    color: #3574f0 !important;
+    border-color: #3574f0 !important;
+    font-weight: bold;
+}

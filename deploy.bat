@@ -12,13 +12,14 @@ if %ERRORLEVEL% neq 0 (
     exit /b %ERRORLEVEL%
 )
 
-set TARGET_DIR=%USERPROFILE%\.antigravity-ide\extensions\leegunhee.quick-search-lgh-0.1.1
+set TARGET_DIR=%USERPROFILE%\.antigravity-ide\extensions\leegunhee.quick-search-lgh-0.1.3
 
 echo [1/3] 대상 디렉토리 생성 중...
 if not exist "%TARGET_DIR%" mkdir "%TARGET_DIR%"
 
 echo [2/3] 파일 복사 중...
 xcopy /Y /S /E "out" "%TARGET_DIR%\out\"
+xcopy /Y /S /E "resources" "%TARGET_DIR%\resources\"
 copy /Y "package.json" "%TARGET_DIR%\"
 if exist "icon.png" copy /Y "icon.png" "%TARGET_DIR%\"
 if exist "README.md" copy /Y "README.md" "%TARGET_DIR%\"

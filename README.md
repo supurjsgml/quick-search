@@ -26,7 +26,7 @@ VS Code's default search can sometimes feel cluttered or hard to navigate. **Qui
 * **State Persistence**: Your chosen search options (style mode, preview heights, dock mode, scopes, and dropdown values) are permanently saved and restored when reopening the panel.
 * **Keyboard Friendly**: Navigate search results easily using standard hotkeys (`Arrow Up/Down` for moving, `Enter` to open files, `ESC` to close).
 * **Improved UI Contrast**: Inactive and active button states are clearly distinguished with bold highlights and high-contrast styling for both IntelliJ and Eclipse modes.
-* **Multi-Language Support**: Fully localized in English and Korean, automatically aligning with your VS Code language settings.
+* **English & Korean Support**: Supports English and Korean localization, automatically aligning with your VS Code language settings.
 
 ---
 
@@ -48,5 +48,5 @@ VS Code's default search can sometimes feel cluttered or hard to navigate. **Qui
 * **설정 영구 보존**: 마지막으로 선택한 디자인 스타일, 화면 분할 활성화 여부, 프리뷰 창의 높이, 검색 탭, 상세 드롭다운 데이터가 에디터나 브라우저를 껐다 켜도 완벽히 기억 및 복원됩니다.
 * **시인성 개선 토글 버튼**: 토글 버튼들의 활성/비활성 테두리 대비와 색상을 명확하게 개선하여 현재 켜진 옵션이 무엇인지 한눈에 쉽게 구별할 수 있습니다.
 * **키보드 중심 단축키 조작**: 마우스를 쓰지 않고도 단축키(`Ctrl+Shift+L` 또는 `Cmd+Shift+L`)로 검색창을 열고, 방향키(`↑/↓`) 이동 및 `Enter`(해당 파일의 타겟 라인으로 이동 후 열기)를 통해 매우 빠른 조작이 가능합니다.
-* **완벽한 다국어 지원**: VS Code의 언어 설정에 맞춰 한국어 및 영어가 자연스럽게 자동 연동됩니다.
+* **한국어 및 영어 지원**: 한국어와 영어 두 가지 언어만 공식 지원하며, VS Code의 언어 설정에 맞춰 자동으로 연동됩니다.
 

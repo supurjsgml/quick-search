@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="{{lang}}">
+<head>
+    <meta charset="UTF-8">
+    <title>{{t.title}}</title>
+    <style>
+{{styles}}
+    </style>
+</head>
+<body>
+
+    <!-- 검색 입력 영역 -->
+    <div class="search-area">
+        <div class="search-box-wrapper">
+            <span class="label">{{t.searchPatternLabel}}</span>
+            <input type="text" id="search-input" placeholder="{{t.searchPlaceholder}}" autocomplete="off" value="{{escapedQuery}}">
+        </div>
+        <div class="filter-box-wrapper">
+            <span class="label">{{t.fileNameFilterLabel}}</span>
+            <input type="text" id="filter-input" placeholder="{{t.fileNameFilterPlaceholder}}" autocomplete="off">
+        </div>
+    </div>
+
+    <!-- 범위 탭 및 테마 토글 바 -->
+    <div class="scope-tabs">
+        <div class="tabs-left" id="search-scope-tabs">
+            <button class="tab-btn active" data-scope="project">{{t.scopeInProject}}</button>
+            <button class="tab-btn" data-scope="module">{{t.scopeModule}}</button>
+            <button class="tab-btn" data-scope="directory">{{t.scopeDirectory}}</button>
+            <button class="tab-btn" data-scope="scope">{{t.scopeScope}}</button>
+        </div>
+        
+        <!-- 동적 탭 보조 상세 컨트롤 영역 -->
+        <div id="scope-details-area" style="display: flex; align-items: center; gap: 6px; margin-left: 12px; flex: 1;">
+            <!-- 모듈 선택용 드롭다운 (Module 모드 시 노출) -->
+            <select id="module-select" class="scope-select" style="display: none;"></select>
+
+            <!-- 디렉터리 선택용 드롭다운 및 찾아보기 버튼 (Directory 모드 시 노출) -->
+            <div id="directory-input-wrapper" style="display: none; align-items: center; gap: 4px; flex: 1; max-width: 400px;">
+                <select id="directory-select" class="scope-select" style="flex: 1; max-width: 320px;"></select>
+                <button id="directory-browse-btn" class="browse-btn">...</button>
+            </div>
+
+            <!-- 범위 선택용 드롭다운 (Scope 모드 시 노출) -->
+            <select id="scope-select" class="scope-select" style="display: none;">
+                <option value="all" selected>{{t.scopeOptAll}}</option>
+                <option value="project_files">{{t.scopeOptProjectFiles}}</option>
+                <option value="production_files">{{t.scopeOptProductionFiles}}</option>
+                <option value="test_files">{{t.scopeOptTestFiles}}</option>
+                <option value="open_files">{{t.scopeOptOpenFiles}}</option>
+            </select>
+        </div>
+
+        <div class="tabs-right">
+            <button class="style-toggle-btn" id="btn-keep-open">{{t.keepOpen}}</button>
+            <button class="style-toggle-btn" id="style-intellij">IntelliJ</button>
+            <button class="style-toggle-btn" id="style-eclipse">Eclipse</button>
+        </div>
+    </div>
+
+    <!-- 검색 결과 목록 -->
+    <div class="grid-area">
+        <table>
+            <thead>
+                <tr>
+                    <th class="col-line">Line<div class="col-resizer"></div></th>
+                    <th class="col-text">Text<div class="col-resizer"></div></th>
+                    <th class="col-path">Path<div class="col-resizer"></div></th>
+                </tr>
+            </thead>
+            <tbody id="results-body">
+                <tr>
+                    <td colspan="3" style="text-align: center; color: var(--vscode-descriptionForeground); padding: 40px;">
+                        {{t.initialMessage}}
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <!-- 크기 조절 스플리터 -->
+    <div class="resizer" id="resizer"></div>
+
+    <!-- 소스 미리보기 -->
+    <div class="preview-area" id="preview-area">
+        <div class="preview-header" id="preview-file-path">{{t.noFileSelected}}</div>
+        <pre class="preview-body"><code id="preview-content">{{t.previewPlaceholder}}</code></pre>
+    </div>
+
+    <!-- 상태 바 -->
+    <div class="status-bar">
+        <span id="status-text">{{t.ready}}</span>
+        <span>{{t.statusBarHelp}}</span>
+    </div>
+
+    <script>
+{{scripts}}
+    </script>
+</body>
+</html>

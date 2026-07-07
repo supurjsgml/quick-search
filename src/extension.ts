@@ -48,6 +48,10 @@ export function activate(context: vscode.ExtensionContext) {
                     command: 'setQuery',
                     text: selectedText
                 });
+            } else {
+                activePanel.webview.postMessage({
+                    command: 'focusInput'
+                });
             }
             return;
         }
@@ -69,7 +73,7 @@ export function activate(context: vscode.ExtensionContext) {
         // HTML 콘텐츠 주입 (초기 검색어 및 에디터 언어 정보 전달)
         const locale = vscode.env.language || 'en';
         const savedStyle = context.globalState.get<string>('searchStyleMode') || 'intellij';
-        activePanel.webview.html = getWebviewContent(selectedText, locale, savedStyle, savedDockMode);
+        activePanel.webview.html = getWebviewContent(context.extensionPath, selectedText, locale, savedStyle, savedDockMode);
 
         // 초기 검색 범위 데이터(모듈, 최근 디렉터리 등) 수집 및 전달
         sendInitialScopeData(activePanel);
