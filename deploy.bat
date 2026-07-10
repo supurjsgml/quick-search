@@ -12,7 +12,7 @@ if %ERRORLEVEL% neq 0 (
     exit /b %ERRORLEVEL%
 )
 
-set TARGET_DIR=%USERPROFILE%\.antigravity-ide\extensions\leegunhee.quick-search-lgh-0.1.3
+set TARGET_DIR=%USERPROFILE%\.antigravity-ide\extensions\leegunhee.quick-search-lgh-0.1.4
 
 echo [1/3] 대상 디렉토리 생성 중...
 if not exist "%TARGET_DIR%" mkdir "%TARGET_DIR%"
