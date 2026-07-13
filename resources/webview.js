@@ -438,8 +438,13 @@ function renderPreview(filePath, contentLines, targetLine, query) {
         
         // 타겟 검색어 하이라이트
         if (query) {
-            const regex = new RegExp('(' + escapeRegExp(query) + ')', 'gi');
-            escapedText = escapedText.replace(regex, '<span class="match-term">$1</span>');
+            try {
+                const escapedQuery = escapeHtml(query);
+                const regex = new RegExp('(' + escapeRegExp(escapedQuery) + ')', 'gi');
+                escapedText = escapedText.replace(regex, '<span class="match-term">$1</span>');
+            } catch (e) {
+                // 하이라이팅 실패 시 에러 전파 방지 및 원본 텍스트 유지
+            }
         }
 
         lineSpan.innerHTML = escapedText + '\n';
@@ -602,7 +607,8 @@ function escapeHtmlAndHighlight(text, query) {
     const escaped = escapeHtml(text);
     if (!query) return escaped;
     try {
-        const regex = new RegExp('(' + escapeRegExp(query) + ')', 'gi');
+        const escapedQuery = escapeHtml(query);
+        const regex = new RegExp('(' + escapeRegExp(escapedQuery) + ')', 'gi');
         return escaped.replace(regex, '<span class="match-term">$1</span>');
     } catch (e) {
         return escaped;
@@ -611,7 +617,7 @@ function escapeHtmlAndHighlight(text, query) {
 
 // 정규식 특수문자 이스케이프
 function escapeRegExp(string) {
-    return string.replace(/[.*+?^\${}()|[\\]\\]/g, '\\$&');
+    return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
 function escapeHtml(text) {

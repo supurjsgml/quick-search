@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.1.5
+* **Korean**:
+  * 특수문자 및 따옴표 기호 검색 버그 픽: 중괄호(`{`, `}`), 대괄호(`[`, `]`), 따옴표(`"`, `'`) 등 특수 기호가 단독 혹은 감싸져서 포함된 키워드 검색 시의 백엔드 검색 누락 및 화면 하이라이트 매칭 오작동 버그 해결
+  * 창 닫기 시 포커스 복원: 퀵서치 웹뷰를 열었다가 검색 없이 ESC 키로 닫았을 때, 이전에 편집 중이던 텍스트 에디터 창으로 키보드 포커스가 자동으로 복원되도록 개선
+* **English**:
+  * Special symbol & Quote search bug fix: Resolved search omissions and webview highlighting malfunctions when searching for keywords containing brackets (`{`, `}`, `[`, `]`) or quotation marks (`"`, `'`).
+  * Restore focus on close: Automatically restores keyboard focus to the previously active editor when closing the search panel.
+
 ## 0.1.4
 * **Korean**:
   * 배포 용량 최적화: 대용량 데모 GIF(`sample.gif`)를 패키지 빌드에서 제외하여 VSIX 크기 대폭 감소

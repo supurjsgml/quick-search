@@ -27,10 +27,14 @@ export function activate(context: vscode.ExtensionContext) {
     }
 
     let activePanel: vscode.WebviewPanel | undefined = undefined;
+    let lastActiveEditor: vscode.TextEditor | undefined = undefined;
 
     let disposable = vscode.commands.registerCommand('quick-search.open', () => {
         // 현재 에디터에서 선택(드래그)된 텍스트 획득
         const editor = vscode.window.activeTextEditor;
+        if (editor) {
+            lastActiveEditor = editor;
+        }
         let selectedText = '';
         if (editor) {
             const selection = editor.selection;
@@ -81,6 +85,12 @@ export function activate(context: vscode.ExtensionContext) {
         // 탭이 닫힐 때 이벤트 처리
         activePanel.onDidDispose(() => {
             activePanel = undefined;
+            if (lastActiveEditor) {
+                vscode.window.showTextDocument(lastActiveEditor.document, {
+                    viewColumn: lastActiveEditor.viewColumn,
+                    preserveFocus: false
+                }).then(undefined, () => {});
+            }
         }, null, context.subscriptions);
 
         // Webview로부터 오는 메시지 처리
@@ -174,7 +184,7 @@ async function handleSearch(
         return;
     }
 
-    const cleanQuery = queryText.toLowerCase().trim();
+    const cleanQuery = queryText.toLowerCase();
     let results: any[] = [];
     
     // 파일 필터 조건 생성 (라이크 및 와일드카드 부분 일치 검색 가능하도록 변환)
@@ -432,7 +442,7 @@ async function handleOpenFile(filePath: string, targetLine: number, query?: stri
         if (query && query.trim()) {
             const lineText = doc.lineAt(lineIndex).text;
             const lowerLine = lineText.toLowerCase();
-            const cleanQuery = query.toLowerCase().trim();
+            const cleanQuery = query.toLowerCase();
             const matchIndex = lowerLine.indexOf(cleanQuery);
             if (matchIndex !== -1) {
                 startChar = matchIndex;
