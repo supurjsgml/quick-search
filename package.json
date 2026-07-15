@@ -2,7 +2,7 @@
   "name": "quick-search-lgh",
   "displayName": "Quick Search (IntelliJ & Eclipse Style)",
   "description": "IntelliJ and Eclipse style floating-like Quick Search using Webview Editor.",
-  "version": "0.1.5",
+  "version": "0.2.0",
   "publisher": "LeeGunHee",
   "repository": {
     "type": "git",

@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.2.0
+* **Korean**:
+  * 검색 성능 최적화: 동시 파일 읽기 개수 제한(30개 동시성 풀) 및 1차 스크리닝 매칭 필터링 방식을 도입하여, 대규모 회사 프로젝트에서도 디스크 과부하 및 CPU 렉 없이 초고속 검색이 가능하도록 개선 (과연 그럴까?)
+* **English**:
+  * Search performance optimization: Introduced concurrency-limited I/O (30 active file reads) and first-stage screening filters to drastically reduce disk overhead and CPU lag in large projects. (I wonder if it really will)
+
 ## 0.1.5
 * **Korean**:
   * 특수문자 및 따옴표 기호 검색 버그 픽: 중괄호(`{`, `}`), 대괄호(`[`, `]`), 따옴표(`"`, `'`) 등 특수 기호가 단독 혹은 감싸져서 포함된 키워드 검색 시의 백엔드 검색 누락 및 화면 하이라이트 매칭 오작동 버그 해결

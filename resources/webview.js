@@ -18,6 +18,10 @@ let isCompactMode = false;
 let currentStyle = 'intellij';
 let currentScope = 'project';
 let dockMode = false;
+let lastSearchDuration = 0;
+let lastSearchTotalCount = 0;
+let renderedCount = 0;
+const CHUNK_SIZE = 100;
 
 const moduleSelect = document.getElementById('module-select');
 const directoryWrapper = document.getElementById('directory-input-wrapper');
@@ -234,6 +238,8 @@ window.addEventListener('message', event => {
     switch (message.command) {
         case 'searchResults':
             resultsData = message.data;
+            lastSearchDuration = message.duration || 0;
+            lastSearchTotalCount = message.totalCount || 0;
             renderResults();
             break;
         case 'previewContent':
@@ -303,6 +309,7 @@ window.addEventListener('message', event => {
 function renderResults() {
     resultsBody.innerHTML = '';
     selectedIndex = -1;
+    renderedCount = 0;
 
     if (resultsData.length === 0) {
         resultsBody.innerHTML = `
@@ -317,19 +324,47 @@ function renderResults() {
         return;
     }
 
-    statusText.innerText = lang === 'ko'
-        ? `${resultsData.length}${t.foundMatches}`
-        : `Found ${resultsData.length}${t.foundMatches}`;
+    let countText = '';
+    if (lastSearchTotalCount > resultsData.length) {
+        countText = lang === 'ko'
+            ? `${resultsData.length}개 표시됨 (총 ${lastSearchTotalCount}개 이상 중)`
+            : `Showing ${resultsData.length} matches (out of ${lastSearchTotalCount}+)`;
+    } else {
+        countText = lang === 'ko'
+            ? `${resultsData.length}${t.foundMatches}`
+            : `Found ${resultsData.length}${t.foundMatches}`;
+    }
 
-    resultsData.forEach((item, index) => {
+    const durationText = lastSearchDuration > 0 ? ` (${lastSearchDuration}ms)` : '';
+    statusText.innerText = countText + durationText;
+
+    if (lastSearchDuration > 0) {
+        console.log(`[Quick Search] Search completed in ${lastSearchDuration}ms (Total: ${lastSearchTotalCount} matches)`);
+    }
+
+    // 첫 청크 렌더링
+    appendMoreResults();
+
+    // 최초 진입 시 기본값이 이미 들어있다면 즉시 검색 실행 및 첫 번째 행 선택
+    if (resultsData.length > 0) {
+        selectRow(0);
+    }
+    adjustLayout();
+}
+
+// 점진적 추가 렌더링 실행 함수
+function appendMoreResults() {
+    const start = renderedCount;
+    const end = Math.min(resultsData.length, start + CHUNK_SIZE);
+    
+    for (let i = start; i < end; i++) {
+        const item = resultsData[i];
         const tr = document.createElement('tr');
-        tr.dataset.index = index;
+        tr.dataset.index = i;
 
         if (currentStyle === 'intellij') {
-            // IntelliJ 스타일 렌더링 (좌측 코드, 우측 경로+라인)
             const leftDiv = document.createElement('div');
             leftDiv.className = 'intellij-row-left';
-            
             const query = searchInput.value;
             leftDiv.innerHTML = escapeHtmlAndHighlight(item.text, query);
             
@@ -340,7 +375,6 @@ function renderResults() {
             tr.appendChild(leftDiv);
             tr.appendChild(rightDiv);
         } else {
-            // Eclipse 스타일 렌더링 (기존 테이블 구조)
             const tdLine = document.createElement('td');
             tdLine.className = 'col-line';
             tdLine.textContent = item.line;
@@ -362,26 +396,27 @@ function renderResults() {
 
         // 클릭 이벤트
         tr.addEventListener('click', () => {
-            selectRow(index);
+            selectRow(i);
         });
 
         // 더블 클릭 시 파일 열기
         tr.addEventListener('dblclick', () => {
-            openFile(index);
+            openFile(i);
         });
 
         resultsBody.appendChild(tr);
-    });
-
-    // 최초 진입 시 기본값이 이미 들어있다면 즉시 검색 실행
-    if (resultsData.length > 0) {
-        selectRow(0);
     }
-    adjustLayout();
+    
+    renderedCount = end;
 }
 
 function selectRow(index) {
     if (index < 0 || index >= resultsData.length) return;
+    
+    // 만약 선택하려는 인덱스가 아직 렌더링되지 않은 범위에 있거나 마지막 줄 근처라면 추가로 그리기 실행
+    while (index >= renderedCount - 5 && renderedCount < resultsData.length) {
+        appendMoreResults();
+    }
     
     const rows = resultsBody.querySelectorAll('tr');
     if (rows[selectedIndex]) {
@@ -390,19 +425,20 @@ function selectRow(index) {
 
     selectedIndex = index;
     const newSelectedRow = rows[selectedIndex];
-    newSelectedRow.classList.add('selected');
-    
-    // 스크롤 동기화
-    newSelectedRow.scrollIntoView({ block: 'nearest' });
+    if (newSelectedRow) {
+        newSelectedRow.classList.add('selected');
+        newSelectedRow.scrollIntoView({ block: 'nearest' });
+    }
 
-    // 백엔드에 미리보기 데이터 요청
     const selectedItem = resultsData[selectedIndex];
-    vscode.postMessage({
-        command: 'requestPreview',
-        path: selectedItem.absolutePath,
-        line: selectedItem.line,
-        query: searchInput.value
-    });
+    if (selectedItem) {
+        vscode.postMessage({
+            command: 'requestPreview',
+            path: selectedItem.absolutePath,
+            line: selectedItem.line,
+            query: searchInput.value
+        });
+    }
 }
 
 // 파일 편집기 열기
@@ -627,4 +663,16 @@ function escapeHtml(text) {
         .replace(/>/g, "&gt;")
         .replace(/"/g, "&quot;")
         .replace(/'/g, "&#039;");
+}
+
+// 스크롤 바닥 감지 및 지연 렌더링 이벤트 바인딩
+const gridAreaElement = document.querySelector('.grid-area');
+if (gridAreaElement) {
+    gridAreaElement.addEventListener('scroll', () => {
+        if (gridAreaElement.scrollTop + gridAreaElement.clientHeight >= gridAreaElement.scrollHeight - 50) {
+            if (renderedCount < resultsData.length) {
+                appendMoreResults();
+            }
+        }
+    });
 }
